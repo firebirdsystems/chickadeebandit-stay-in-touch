@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base href="/run/stay-in-touch/" />
+  <title>Keep in Touch</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: var(--hub-bg, #f9fafb);
+      --surface: var(--hub-surface, #ffffff);
+      --border: var(--hub-border, #e5e7eb);
+      --border-mid: var(--hub-border, #d1d5db);
+      --text: var(--hub-text, #111827);
+      --muted: var(--hub-text-muted, #6b7280);
+      --accent: var(--hub-primary, #0f766e);
+      --accent-hover: var(--hub-primary-hover, #115e59);
+      --accent-fg: var(--hub-primary-fg, #ffffff);
+      --radius: var(--hub-radius, 12px);
+      --green: #047857; --green-soft: #d1fae5;
+      --amber: #b45309; --amber-soft: #fef3c7;
+      --red: #b91c1c;   --red-soft: #fee2e2;
+      --indigo: #4338ca; --indigo-soft: #e0e7ff;
+      --shadow: 0 1px 3px rgba(15,23,42,.07);
+    }
+    body {
+      min-height: 100vh; background: var(--bg); color: var(--text);
+      font-family: var(--hub-font, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+      font-size: var(--hub-font-size, 15px); line-height: 1.5;
+    }
+    .app { max-width: 720px; margin: 0 auto; padding: 16px 20px 48px; }
+    .header h1 { font-size: 1.3rem; }
+    .header .subtitle { color: var(--muted); font-size: .85rem; margin-top: 2px; }
+    .muted { color: var(--muted); }
+    .tiny { font-size: .78rem; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px;
+    }
+    .banner { border-radius: var(--radius); padding: 14px 16px; margin: 14px 0; font-size: .9rem; line-height: 1.5; }
+    .banner.buy { background: var(--indigo-soft); border: 1px solid #c7d2fe; color: #3730a3; }
+    .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 2px 12px; flex-wrap: wrap; }
+    .toolbar h2 { font-size: 1rem; }
+    .stat-row { display: flex; gap: 10px; margin: 4px 0 14px; flex-wrap: wrap; }
+    .stat { flex: 1; min-width: 120px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; box-shadow: var(--shadow); }
+    .stat .n { font-size: 1.35rem; font-weight: 800; }
+    .stat .l { font-size: .74rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+    .stat.overdue .n { color: var(--red); }
+    .conn-head { display: flex; align-items: flex-start; gap: 12px; }
+    .avatar { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; font-size: .95rem; }
+    .conn-main { flex: 1; min-width: 0; }
+    .conn-title { font-weight: 750; font-size: 1.02rem; }
+    .conn-rel { color: var(--muted); font-size: .82rem; }
+    .conn-meta { color: var(--muted); font-size: .84rem; margin-top: 3px; }
+    .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 10px; border-radius: 999px;
+      background: #f1f5f9; color: var(--muted); font-size: .74rem; font-weight: 700; white-space: nowrap; }
+    .pill.good { background: var(--green-soft); color: var(--green); }
+    .pill.warn { background: var(--amber-soft); color: var(--amber); }
+    .pill.bad { background: var(--red-soft); color: var(--red); }
+    .pill.info { background: var(--indigo-soft); color: var(--indigo); }
+    .history { margin-top: 10px; display: grid; gap: 5px; }
+    .h-item { display: flex; align-items: center; gap: 8px; font-size: .82rem; color: var(--text); }
+    .h-item .h-emoji { font-size: 1rem; }
+    .h-item .h-when { color: var(--muted); margin-left: auto; white-space: nowrap; }
+    .row-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+    button {
+      font: inherit; border: 1px solid transparent; border-radius: 8px; padding: 9px 14px;
+      cursor: pointer; font-weight: 700; min-height: 38px;
+    }
+    button:disabled { opacity: .5; cursor: default; }
+    .btn { background: var(--accent); color: var(--accent-fg); }
+    .btn:hover { background: var(--accent-hover); }
+    .btn-touch { background: var(--accent); color: var(--accent-fg); }
+    .btn-ghost { background: transparent; color: var(--text); border-color: var(--border-mid); }
+    .btn-ghost:hover { background: #f8fafc; }
+    .btn-danger { background: var(--red-soft); color: var(--red); }
+    .btn-sm { min-height: 32px; padding: 5px 10px; font-size: .8rem; }
+    .spacer { flex: 1; }
+    label { display: block; font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 800; margin: 12px 0 5px; }
+    input, textarea, select {
+      width: 100%; border: 1.5px solid var(--border-mid); border-radius: 8px;
+      padding: 9px 11px; font: inherit; background: var(--surface); color: var(--text);
+    }
+    textarea { min-height: 64px; resize: vertical; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+    .recipient { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: .92rem; text-transform: none; letter-spacing: normal; }
+    .recipient input { width: 16px; height: 16px; }
+    .ext-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0; }
+    .ext-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: .84rem; max-width: 100%; }
+    .ext-chip .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ext-chip .badge { font-size: .66rem; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 999px; }
+    .ext-chip .badge.confirmed { background: var(--green-soft); color: #065f46; }
+    .ext-chip .badge.pending { background: var(--amber-soft); color: #92400e; }
+    .ext-chip .badge.unsubscribed { background: var(--red-soft); color: #991b1b; }
+    .ext-chip .x { background: transparent; border: none; padding: 0 2px; min-height: auto; cursor: pointer; color: var(--muted); font-size: 1rem; font-weight: 700; }
+    .add-external { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+    .add-external input[type="email"] { flex: 2; min-width: 150px; }
+    .add-external input[type="text"] { flex: 1; min-width: 100px; }
+    .picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .picker .pick { background: transparent; border: 1px dashed var(--border-mid); border-radius: 999px; padding: 4px 12px; min-height: auto; font-size: .82rem; font-weight: 500; color: var(--text); }
+    .kind-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .kind-btn { flex: 1; min-width: 88px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+      border: 1.5px solid var(--border-mid); border-radius: var(--radius); background: var(--surface);
+      color: var(--text); padding: 10px 6px; cursor: pointer; font: inherit; font-weight: 650; font-size: .82rem; }
+    .kind-btn .emoji { font-size: 1.4rem; }
+    .kind-btn:hover { border-color: var(--accent); }
+    .kind-btn.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: flex; align-items: flex-start; justify-content: center; padding: 24px 14px; overflow-y: auto; z-index: 50; }
+    .modal { background: var(--surface); border-radius: var(--radius); box-shadow: 0 20px 50px rgba(15,23,42,.25); padding: 20px; width: 100%; max-width: 520px; }
+    .modal h2 { font-size: 1.1rem; margin-bottom: 4px; }
+    .actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; align-items: center; }
+    .hint { font-size: .8rem; color: var(--muted); margin-top: 4px; }
+    .error { background: var(--red-soft); color: var(--red); padding: 9px 12px; border-radius: 8px; margin: 8px 0; font-size: .86rem; }
+    .notice { background: var(--green-soft); color: var(--green); padding: 9px 12px; border-radius: 8px; margin: 8px 0; font-size: .86rem; }
+    .empty { text-align: center; color: var(--muted); padding: 26px 14px; }
+    .footnote { color: var(--muted); font-size: .8rem; margin-top: 18px; }
+    @media (max-width: 520px) { .kind-btn { min-width: 0; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <h1>🤝 Keep in Touch</h1>
+      <p class="subtitle">Set how often you want to reach out to the people you care about. We’ll nudge you when it’s been too long.</p>
+    </div>
+    <div id="root"><div class="empty">Loading…</div></div>
+  </div>
+
+  <script type="module">
+    import { esc, isAdult, memberColor, hubConfirm } from "/hub-sdk.js";
+    import {
+      CADENCE_PRESETS, TOUCH_KINDS, touchKindMeta, weeksToHours, hoursToWeeks,
+      cadenceLabel, connectionStatus, formatDuration, timeAgo, validateConnection,
+      recipientsSummary, connectionTitle, connectionInitials, sortByUrgency,
+      normalizeEmail, isValidEmail, MAX_CONNECTIONS, MAX_EXTERNAL_RECIPIENTS,
+    } from "./logic.js";
+
+    const T = "app_stay_in_touch__";
+    const DB = window.__DB_URL ?? "";
+    const CONTEXT = window.__CONTEXT_URL ?? "";
+    const APP_ID = window.__APP_ID ?? "stay-in-touch";
+    let ME = window.__CURRENT_MEMBER ?? null; // falls back to a demo member with no hub context
+    const CHECK_IN = `/run/${APP_ID}/api/check-in`;   // used only to read entitlement (GET)
+    const XC_INVITE = window.__EXTERNAL_CONTACTS_INVITE_URL ?? "";
+    const XC_LIST = window.__EXTERNAL_CONTACTS_LIST_URL ?? "";
+
+    let members = [];
+    let memberMap = new Map();
+    let connections = [];
+    let touches = [];                 // my logged touches (owner_only)
+    let entitled = null;              // null until the entitlement endpoint answers
+    let externalContacts = new Map(); // normalized email → { status, name }
+    let contactsBook = [];            // [{name, email}] quick-adds from the contacts app
+    let error = "";
+    let notice = "";
+
+    const iAmAdult = () => isAdult(ME, members);
+    const myEmail = () => normalizeEmail(ME?.email);
+
+    async function db(sql, params = []) {
+      if (!DB) return { rows: [] };
+      const res = await fetch(DB, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sql, params }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      return json;
+    }
+
+    // ── loading ─────────────────────────────────────────────────────────────
+
+    async function loadMembers() {
+      if (!CONTEXT) {
+        members = [
+          { id: "demo-1", name: "You", role: "adult", email: "you@example.com" },
+          { id: "demo-2", name: "Sam", role: "adult", email: "sam@example.com" },
+        ];
+      } else {
+        try {
+          const res = await fetch(`${CONTEXT}?keys=family.members`);
+          members = ((await res.json())["family.members"]) ?? [];
+        } catch { members = []; }
+      }
+      memberMap = new Map(members.map(m => [m.id, m]));
+    }
+
+    async function loadConnections() {
+      if (!DB) {
+        const now = Date.now();
+        connections = [
+          { id: "demo-c1", member_id: "demo-1", name: "Aunt Sue", relationship: "Aunt", active: 1, interval_hours: weeksToHours(13),
+            message: "Ask about her garden.", recipient_member_ids: '["demo-1"]', recipient_emails: '["you@example.com"]',
+            last_contact_at: new Date(now - 100 * 24 * 3600 * 1000).toISOString(), last_alerted_at: null,
+            created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+          { id: "demo-c2", member_id: "demo-1", name: "Marcus Lee", relationship: "College roommate", active: 1, interval_hours: weeksToHours(4),
+            message: "", recipient_member_ids: '["demo-1"]', recipient_emails: '["you@example.com"]',
+            last_contact_at: new Date(now - 20 * 24 * 3600 * 1000).toISOString(), last_alerted_at: null,
+            created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        ];
+        return;
+      }
+      const { rows } = await db(`SELECT * FROM ${T}connections ORDER BY created_at ASC`);
+      connections = rows ?? [];
+    }
+
+    async function loadTouches() {
+      if (!DB) {
+        const now = Date.now();
+        touches = [
+          { id: "t1", member_id: "demo-1", connection_id: "demo-c1", kind: "call", note: "Caught up for an hour.", touched_at: new Date(now - 100 * 24 * 3600 * 1000).toISOString() },
+          { id: "t2", member_id: "demo-1", connection_id: "demo-c2", kind: "text", note: "", touched_at: new Date(now - 20 * 24 * 3600 * 1000).toISOString() },
+        ];
+        return;
+      }
+      const { rows } = await db(`SELECT * FROM ${T}touches ORDER BY touched_at DESC LIMIT 400`);
+      touches = rows ?? [];
+    }
+
+    async function loadEntitlement() {
+      try {
+        const res = await fetch(CHECK_IN);
+        if (!res.ok) { entitled = null; return; }
+        entitled = !!(await res.json()).entitled;
+      } catch { entitled = null; }
+    }
+
+    async function loadExternalContacts() {
+      externalContacts = new Map();
+      if (!XC_LIST) return;
+      try {
+        const res = await fetch(XC_LIST, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+        if (!res.ok) return;
+        const { contacts } = await res.json();
+        for (const c of contacts ?? []) externalContacts.set(normalizeEmail(c.email), { status: c.status, name: c.name || "" });
+      } catch { /* leave empty */ }
+    }
+
+    async function loadContactsBook() {
+      contactsBook = [];
+      try {
+        const res = await fetch(`${CONTEXT}?keys=app.contacts.contact_emails`);
+        const list = (await res.json())["app.contacts.contact_emails"];
+        if (Array.isArray(list)) {
+          contactsBook = list.filter(c => c && isValidEmail(c.email))
+            .map(c => ({ name: String(c.name || "").trim(), email: normalizeEmail(c.email) }));
+        }
+      } catch { contactsBook = []; }
+    }
+
+    // ── derived ───────────────────────────────────────────────────────────────
+
+    function touchesFor(connectionId) { return touches.filter(t => t.connection_id === connectionId); }
+    function contactStatus(email) { return externalContacts.get(normalizeEmail(email))?.status ?? "pending"; }
+    function contactName(email) {
+      const norm = normalizeEmail(email);
+      return externalContacts.get(norm)?.name || contactsBook.find(c => c.email === norm)?.name || "";
+    }
+
+    // ── rendering ───────────────────────────────────────────────────────────────
+
+    const STATE_PILL = {
+      ok: ["good", "On track"], due_soon: ["warn", "Due soon"], overdue: ["bad", "Overdue"],
+      paused: ["", "Paused"],
+    };
+
+    function renderMessages() {
+      return `${error ? `<div class="error">${esc(error)}</div>` : ""}${notice ? `<div class="notice">${esc(notice)}</div>` : ""}`;
+    }
+
+    function renderBanner() {
+      if (entitled !== false) return "";
+      return `<div class="banner buy">🔒 <strong>Email nudges aren’t active for your household yet.</strong>
+        Tracking connections and logging touches is free, but the scheduled reminder emails are part of the
+        <strong>Premium</strong> capability bundle. A household admin can upgrade from
+        <strong>Apps → Marketplace</strong>. Until then, your list still works as an in-app tracker.</div>`;
+    }
+
+    function renderStats() {
+      const now = new Date();
+      let overdue = 0, dueSoon = 0, active = 0;
+      for (const c of connections) {
+        const s = connectionStatus(c, now);
+        if (s.state === "overdue") overdue++;
+        else if (s.state === "due_soon") dueSoon++;
+        if (Number(c.active) === 1) active++;
+      }
+      return `<div class="stat-row">
+        <div class="stat ${overdue ? "overdue" : ""}"><div class="n">${overdue}</div><div class="l">Overdue</div></div>
+        <div class="stat"><div class="n">${dueSoon}</div><div class="l">Due soon</div></div>
+        <div class="stat"><div class="n">${active}</div><div class="l">Active</div></div>
+      </div>`;
+    }
+
+    function statusDetail(c, status) {
+      if (status.state === "paused") return "Reminders paused.";
+      const who = recipientsSummary(
+        JSON.parse(c.recipient_member_ids || "[]"), members, c.member_id,
+        JSON.parse(c.recipient_emails || "[]"), myEmail(),
+      );
+      if (status.state === "overdue") {
+        const over = status.overdueMs > 0 ? `${formatDuration(status.overdueMs)} past due` : "due now";
+        return `Reach out (${cadenceLabel(c.interval_hours)}) — ${over}. Nudge goes to ${esc(who)}.`;
+      }
+      return `Next reach-out due in ${formatDuration(status.remainingMs)} (${cadenceLabel(c.interval_hours)}). Nudge goes to ${esc(who)}.`;
+    }
+
+    function renderConnectionCard(c) {
+      const status = connectionStatus(c);
+      const [cls, label] = STATE_PILL[status.state] ?? ["", ""];
+      const recent = touchesFor(c.id).slice(0, 3);
+      const color = memberColor ? memberColor(c.id) : "#0f766e";
+      const paused = Number(c.active) !== 1;
+      return `
+        <div class="card" data-cid="${esc(c.id)}">
+          <div class="conn-head">
+            <div class="avatar" style="background:${esc(color)}">${esc(connectionInitials(c.name))}</div>
+            <div class="conn-main">
+              <div class="conn-title">${esc(connectionTitle(c))}</div>
+              ${c.relationship ? `<div class="conn-rel">${esc(c.relationship)}</div>` : ""}
+              <div class="conn-meta">Last reached out ${esc(timeAgo(c.last_contact_at))}</div>
+            </div>
+            <span class="pill ${cls}">${esc(label)}</span>
+          </div>
+          <p class="conn-meta" style="margin-top:8px">${statusDetail(c, status)}</p>
+          ${recent.length ? `<div class="history">${recent.map(renderHistoryItem).join("")}</div>` : ""}
+          <div class="row-actions">
+            <button class="btn-touch btn-sm" data-touch="${esc(c.id)}">✓ Log a touch</button>
+            <button class="btn-ghost btn-sm" data-edit="${esc(c.id)}">Edit</button>
+            ${paused
+              ? `<button class="btn-ghost btn-sm" data-resume="${esc(c.id)}">Resume</button>`
+              : `<button class="btn-ghost btn-sm" data-pause="${esc(c.id)}">Pause</button>`}
+            <span class="spacer"></span>
+            <button class="btn-danger btn-sm" data-delete="${esc(c.id)}">Delete</button>
+          </div>
+        </div>`;
+    }
+
+    function renderHistoryItem(t) {
+      const m = touchKindMeta(t.kind);
+      return `<div class="h-item">
+        <span class="h-emoji">${esc(m ? m.emoji : "👋")}</span>
+        <span>${t.note ? esc(t.note) : esc(m ? m.label : "Reached out")}</span>
+        <span class="h-when">${esc(timeAgo(t.touched_at))}</span>
+      </div>`;
+    }
+
+    function render() {
+      const root = document.getElementById("root");
+      if (!ME) { root.innerHTML = `<div class="card empty">Sign in to use Keep in Touch.</div>`; return; }
+      if (!iAmAdult()) {
+        root.innerHTML = `<div class="card empty">Keep in Touch is available to adults in the household.</div>`;
+        return;
+      }
+      const ordered = sortByUrgency(connections);
+      root.innerHTML = `
+        ${renderBanner()}
+        ${renderMessages()}
+        ${connections.length ? renderStats() : ""}
+        <div class="toolbar">
+          <h2>Your people</h2>
+          <button class="btn btn-sm" data-add ${connections.length >= MAX_CONNECTIONS ? "disabled" : ""}>+ Add someone</button>
+        </div>
+        ${ordered.length
+          ? ordered.map(renderConnectionCard).join("")
+          : `<div class="card empty">No connections yet. Add someone you want to stay in touch with.</div>`}
+        <p class="footnote">Reminders are emailed on the hub’s schedule — they work even when nobody has the app open.
+          External addresses are only emailed after confirming by email (double opt-in). Logging a touch is always free;
+          the scheduled email nudge is part of Premium.</p>`;
+    }
+
+    function flash({ err = "", ok = "" } = {}) { error = err; notice = ok; render(); }
+
+    // ── log a touch ─────────────────────────────────────────────────────────────
+    // Per-connection: stamp last_contact_at on THIS connection only (owner_only
+    // lets the owner write their own row) and clear last_alerted_at so a fresh
+    // nudge can fire next window. We deliberately do NOT use POST /api/check-in —
+    // that resets every connection the member owns at once.
+
+    async function logTouch(connectionId, kind, note) {
+      const c = connections.find(x => x.id === connectionId);
+      if (!c) return;
+      const now = new Date().toISOString();
+      const touch = { id: crypto.randomUUID(), member_id: ME.id, connection_id: connectionId, kind, note: note ?? "", touched_at: now };
+      // Optimistic local update — the reminder clock is anchored to last_contact_at.
+      const idx = connections.findIndex(x => x.id === connectionId);
+      if (idx !== -1) connections[idx] = { ...connections[idx], last_contact_at: now, last_alerted_at: null };
+      touches = [touch, ...touches];
+      closeModal();
+      flash({ ok: `Logged — nice work staying in touch with ${connectionTitle(c)}.` });
+      if (!DB) return;
+      try {
+        await db(`UPDATE ${T}connections SET last_contact_at = ?, last_alerted_at = NULL, updated_at = ? WHERE id = ?`, [now, now, connectionId]);
+        await db(`INSERT INTO ${T}touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, ?)`,
+          [touch.id, touch.member_id, touch.connection_id, touch.kind, touch.note, touch.touched_at]);
+      } catch (e) {
+        flash({ err: `Couldn't save the touch: ${e.message}` });
+        await loadConnections(); await loadTouches(); render();
+      }
+    }
+
+    // ── pause / resume / delete ─────────────────────────────────────────────────
+
+    async function setActive(id, active) {
+      try {
+        const now = new Date().toISOString();
+        // Resuming re-anchors the clock so a long-paused connection doesn't fire instantly.
+        if (active) await db(`UPDATE ${T}connections SET active = 1, last_contact_at = ?, last_alerted_at = NULL, updated_at = ? WHERE id = ?`, [now, now, id]);
+        else await db(`UPDATE ${T}connections SET active = 0, updated_at = ? WHERE id = ?`, [now, id]);
+        await loadConnections();
+        flash({ ok: active ? "Reminders resumed." : "Reminders paused." });
+      } catch (e) { flash({ err: e.message }); }
+    }
+
+    async function deleteConnection(id) {
+      const c = connections.find(x => x.id === id);
+      if (!c) return;
+      if (!(await hubConfirm({ message: `Delete ${connectionTitle(c)}?`, description: "The reminder stops and the touch history is removed.", confirmLabel: "Delete", destructive: true }))) return;
+      try {
+        await db(`DELETE FROM ${T}connections WHERE id = ?`, [id]);
+        await db(`DELETE FROM ${T}touches WHERE connection_id = ?`, [id]);
+        await loadConnections(); await loadTouches();
+        flash({ ok: "Connection deleted." });
+      } catch (e) { flash({ err: e.message }); }
+    }
+
+    // ── modal plumbing ──────────────────────────────────────────────────────────
+
+    let modalEl = null;
+    function closeModal() { modalEl?.remove(); modalEl = null; }
+    function openModal(html) {
+      closeModal();
+      modalEl = document.createElement("div");
+      modalEl.className = "modal-backdrop";
+      modalEl.innerHTML = `<div class="modal">${html}</div>`;
+      modalEl.addEventListener("click", e => { if (e.target === modalEl) closeModal(); });
+      document.body.appendChild(modalEl);
+    }
+
+    // ── log-touch modal ─────────────────────────────────────────────────────────
+
+    let touchKind = "call";
+    function openTouchModal(connectionId) {
+      const c = connections.find(x => x.id === connectionId);
+      if (!c) return;
+      touchKind = "call";
+      openModal(`
+        <h2>How did you reach out to ${esc(connectionTitle(c))}?</h2>
+        <p class="hint">Logging a touch resets the reminder clock for this person.</p>
+        <div class="kind-row" data-el="kinds">
+          ${TOUCH_KINDS.map(k => `<button type="button" class="kind-btn ${k.key === touchKind ? "selected" : ""}" data-kind="${esc(k.key)}">
+            <span class="emoji">${esc(k.emoji)}</span>${esc(k.label)}</button>`).join("")}
+        </div>
+        <label for="tf-note">Note (optional)</label>
+        <textarea id="tf-note" maxlength="500" placeholder="What did you talk about?"></textarea>
+        <div class="actions">
+          <button class="btn" data-action="save-touch" data-id="${esc(connectionId)}">Log it</button>
+          <span class="spacer"></span>
+          <button class="btn-ghost" data-action="cancel" type="button">Cancel</button>
+        </div>`);
+    }
+
+    // ── add / edit modal ──────────────────────────────────────────────────────
+
+    let modalEmails = []; // external emails chosen inside the open modal
+
+    function cadenceOptionsHtml(hours) {
+      const weeks = hours ? hoursToWeeks(hours) : 4;
+      const isPreset = CADENCE_PRESETS.some(p => p.weeks === weeks);
+      const opts = CADENCE_PRESETS.map(p =>
+        `<option value="${p.weeks}" ${p.weeks === weeks ? "selected" : ""}>${esc(p.label)}</option>`).join("");
+      return `${opts}<option value="custom" ${isPreset ? "" : "selected"}>Custom…</option>`;
+    }
+
+    function configFormHtml(c) {
+      const isNew = !c;
+      const chosen = new Set(JSON.parse(c?.recipient_member_ids || "[]"));
+      const otherAdults = members.filter(m => m.role === "adult" && m.id !== ME.id);
+      const weeks = c ? hoursToWeeks(c.interval_hours) : 4;
+      const isPreset = CADENCE_PRESETS.some(p => p.weeks === weeks);
+      return `
+        <h2>${isNew ? "Add someone" : "Edit connection"}</h2>
+        <p class="hint">We’ll remind you to reach out on the cadence you pick.</p>
+        <div class="error" data-el="error" hidden></div>
+        <label for="cf-name">Name</label>
+        <input id="cf-name" type="text" maxlength="80" value="${esc(c?.name ?? "")}" placeholder="e.g. Aunt Sue" />
+        <label for="cf-rel">Relationship (optional)</label>
+        <input id="cf-rel" type="text" maxlength="60" value="${esc(c?.relationship ?? "")}" placeholder="e.g. Aunt, mentor, old friend" />
+        <label for="cf-cadence">Reach out</label>
+        <select id="cf-cadence">${cadenceOptionsHtml(c?.interval_hours)}</select>
+        <div data-el="custom-weeks" ${isPreset ? "hidden" : ""} style="display:flex;align-items:center;gap:8px;margin-top:8px">
+          <input id="cf-weeks" type="number" min="1" max="104" step="1" style="width:110px" value="${esc(String(weeks))}" />
+          <span class="muted">week(s)</span>
+        </div>
+        <label for="cf-message">Note for the reminder (optional)</label>
+        <textarea id="cf-message" maxlength="2000" placeholder="Anything to remember for next time?">${esc(c?.message ?? "")}</textarea>
+        <label>Send the nudge to</label>
+        <div class="ext-chips" data-el="external-list"></div>
+        <div class="add-external">
+          <input type="email" data-el="ext-email" placeholder="name@example.com" />
+          <input type="text" data-el="ext-name" maxlength="120" placeholder="Name (optional)" />
+          <button class="btn-ghost btn-sm" data-action="add-external" type="button">Add</button>
+        </div>
+        <div class="picker" data-el="contacts-picker"></div>
+        ${otherAdults.length ? `
+          <label>Also remind these household adults</label>
+          <div data-el="recipients">
+            ${otherAdults.map(m => `<label class="recipient"><input type="checkbox" value="${esc(m.id)}" ${chosen.has(m.id) ? "checked" : ""} /> ${esc(m.name)}</label>`).join("")}
+          </div>` : ""}
+        <p class="hint">Email addresses must confirm by email once before any nudge is sent (double opt-in).</p>
+        <div class="actions">
+          <button class="btn" data-action="save" data-id="${esc(c?.id ?? "")}">${isNew ? "Add" : "Save"}</button>
+          <span class="spacer"></span>
+          <button class="btn-ghost" data-action="cancel" type="button">Cancel</button>
+        </div>`;
+    }
+
+    function openConfig(c) {
+      modalEmails = JSON.parse(c?.recipient_emails || "[]").map(normalizeEmail);
+      // Pre-seed a new connection with the owner's own email so "remind me" is the default.
+      if (!c && myEmail() && !modalEmails.includes(myEmail())) modalEmails = [myEmail()];
+      openModal(configFormHtml(c));
+      renderModalEmails();
+    }
+
+    const BADGE = { confirmed: "Confirmed", pending: "Pending", unsubscribed: "Unsubscribed" };
+
+    function renderModalEmails() {
+      if (!modalEl) return;
+      const list = modalEl.querySelector('[data-el="external-list"]');
+      if (!list) return;
+      const unique = [...new Set(modalEmails.map(normalizeEmail))];
+      list.innerHTML = unique.length ? unique.map(email => {
+        const status = contactStatus(email);
+        const isSelf = email === myEmail();
+        const name = isSelf ? "You" : contactName(email);
+        const who = name ? `${esc(name)} · ${esc(email)}` : esc(email);
+        return `<span class="ext-chip" data-email="${esc(email)}">
+          <span class="who">${who}</span>
+          <span class="badge ${esc(status)}">${esc(BADGE[status] ?? "Pending")}</span>
+          <button type="button" class="x" data-action="remove-external" title="Remove">×</button>
+        </span>`;
+      }).join("") : `<span class="hint">No reminder emails yet — add one above.</span>`;
+      const picker = modalEl.querySelector('[data-el="contacts-picker"]');
+      if (picker) {
+        const chosen = new Set(unique);
+        const options = contactsBook.filter(c => !chosen.has(c.email)).slice(0, 12);
+        picker.innerHTML = options.length
+          ? `<span class="hint" style="width:100%">Quick-add from Contacts:</span>` + options.map(c =>
+              `<button type="button" class="pick" data-action="pick-contact" data-email="${esc(c.email)}" data-name="${esc(c.name)}">+ ${esc(c.name || c.email)}</button>`).join("")
+          : "";
+      }
+    }
+
+    function modalError(msg) {
+      const el = modalEl?.querySelector('[data-el="error"]');
+      if (!el) return;
+      if (msg) { el.textContent = msg; el.hidden = false; } else el.hidden = true;
+    }
+
+    async function inviteExternal(email, name) {
+      const norm = normalizeEmail(email);
+      if (!isValidEmail(norm)) return modalError("Enter a valid email address.");
+      if (modalEmails.includes(norm)) return modalError("That address is already added.");
+      if (modalEmails.length >= MAX_EXTERNAL_RECIPIENTS) return modalError(`Up to ${MAX_EXTERNAL_RECIPIENTS} reminder emails.`);
+      modalError(null);
+      const known = externalContacts.get(norm);
+      if (known?.status !== "confirmed" && XC_INVITE) {
+        try {
+          const res = await fetch(XC_INVITE, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: norm, name: name || undefined }) });
+          if (res.status === 402) { entitled = false; return modalError("Sending reminder emails needs the Premium bundle."); }
+          if (!res.ok) { const d = await res.json().catch(() => ({})); return modalError(d.error ?? "Couldn’t send the confirmation email."); }
+          const { contact } = await res.json();
+          if (contact) externalContacts.set(norm, { status: contact.status, name: contact.name || name || "" });
+        } catch { return modalError("Couldn’t send the confirmation email."); }
+      } else if (name && !externalContacts.has(norm)) {
+        externalContacts.set(norm, { status: "pending", name });
+      }
+      modalEmails = [...modalEmails, norm];
+      renderModalEmails();
+    }
+
+    async function saveConfig(existingId) {
+      const cadenceSel = modalEl.querySelector("#cf-cadence").value;
+      const weeks = cadenceSel === "custom" ? Number(modalEl.querySelector("#cf-weeks").value) : Number(cadenceSel);
+      const recipientIds = [...modalEl.querySelectorAll('[data-el="recipients"] input:checked')].map(i => i.value);
+      const cfg = {
+        name: modalEl.querySelector("#cf-name").value.trim(),
+        relationship: modalEl.querySelector("#cf-rel").value.trim(),
+        intervalWeeks: weeks,
+        message: modalEl.querySelector("#cf-message").value.trim(),
+        recipientEmails: [...modalEmails],
+      };
+      const err = validateConnection(cfg);
+      if (err) return modalError(err);
+
+      // The owner id is stored as a self-only sentinel so the cron never fans the
+      // nudge out to "all adults"; it is filtered out hub-side.
+      const memberIds = JSON.stringify([ME.id, ...recipientIds.filter(id => id !== ME.id)]);
+      const emails = JSON.stringify(cfg.recipientEmails);
+
+      const btn = modalEl.querySelector('[data-action="save"]');
+      if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+      const now = new Date().toISOString();
+      try {
+        if (existingId) {
+          await db(`UPDATE ${T}connections SET name = ?, relationship = ?, interval_hours = ?, message = ?, recipient_member_ids = ?, recipient_emails = ?, updated_at = ? WHERE id = ?`,
+            [cfg.name, cfg.relationship, weeksToHours(weeks), cfg.message, memberIds, emails, now, existingId]);
+        } else {
+          const id = crypto.randomUUID();
+          // Seed last_contact_at = now so the countdown starts from "today"
+          // instead of firing a nudge the moment the connection is created.
+          await db(`INSERT INTO ${T}connections (id, member_id, name, relationship, active, interval_hours, message, recipient_member_ids, recipient_emails, last_contact_at, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
+            [id, ME.id, cfg.name, cfg.relationship, weeksToHours(weeks), cfg.message, memberIds, emails, now, now, now]);
+        }
+        await loadConnections();
+        closeModal();
+        flash({ ok: existingId ? "Connection saved." : `Added ${cfg.name}. We’ll remind you ${cadenceLabel(weeksToHours(weeks))}.` });
+      } catch (e) {
+        if (btn) { btn.disabled = false; btn.textContent = existingId ? "Save" : "Add"; }
+        modalError(e.message);
+      }
+    }
+
+    // ── events ────────────────────────────────────────────────────────────────
+
+    document.getElementById("root").addEventListener("click", e => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      if (btn.hasAttribute("data-add")) return void openConfig(null);
+      if (btn.hasAttribute("data-touch")) return void openTouchModal(btn.getAttribute("data-touch"));
+      if (btn.hasAttribute("data-edit")) return void openConfig(connections.find(c => c.id === btn.getAttribute("data-edit")));
+      if (btn.hasAttribute("data-pause")) return void setActive(btn.getAttribute("data-pause"), false);
+      if (btn.hasAttribute("data-resume")) return void setActive(btn.getAttribute("data-resume"), true);
+      if (btn.hasAttribute("data-delete")) return void deleteConnection(btn.getAttribute("data-delete"));
+    });
+
+    document.addEventListener("change", e => {
+      if (!modalEl || !modalEl.contains(e.target)) return;
+      if (e.target.id === "cf-cadence") {
+        const custom = modalEl.querySelector('[data-el="custom-weeks"]');
+        if (custom) custom.hidden = e.target.value !== "custom";
+      }
+    });
+
+    document.addEventListener("click", e => {
+      const btn = e.target.closest("button[data-action], button[data-kind]");
+      if (!btn || !modalEl || !modalEl.contains(btn)) return;
+      if (btn.hasAttribute("data-kind")) {
+        touchKind = btn.getAttribute("data-kind");
+        modalEl.querySelectorAll("[data-kind]").forEach(k => k.classList.toggle("selected", k === btn));
+        return;
+      }
+      const action = btn.dataset.action;
+      if (action === "cancel") return closeModal();
+      if (action === "save") return void saveConfig(btn.dataset.id || null);
+      if (action === "save-touch") {
+        const note = modalEl.querySelector("#tf-note")?.value.trim() ?? "";
+        return void logTouch(btn.dataset.id, touchKind, note);
+      }
+      if (action === "add-external") {
+        const emailEl = modalEl.querySelector('[data-el="ext-email"]');
+        const nameEl = modalEl.querySelector('[data-el="ext-name"]');
+        inviteExternal(emailEl.value, nameEl.value.trim());
+        emailEl.value = ""; nameEl.value = "";
+        return;
+      }
+      if (action === "pick-contact") return void inviteExternal(btn.dataset.email, btn.dataset.name || "");
+      if (action === "remove-external") {
+        const email = btn.closest(".ext-chip")?.dataset.email;
+        modalEmails = modalEmails.filter(x => x !== email);
+        renderModalEmails();
+      }
+    });
+
+    // ── init ────────────────────────────────────────────────────────────────────
+
+    (async function init() {
+      await Promise.all([loadMembers(), loadConnections(), loadTouches(), loadEntitlement(), loadExternalContacts(), loadContactsBook()]);
+      if (!ME && !CONTEXT) ME = members[0] ?? null; // demo mode: act as the first member
+      render();
+      setInterval(() => { if (!modalEl) render(); }, 60_000); // keep countdowns fresh
+    })();
+  </script>
+</body>
+</html>

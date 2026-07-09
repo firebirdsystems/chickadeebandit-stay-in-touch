@@ -1,0 +1,65 @@
+{
+  "id": "stay-in-touch",
+  "name": "Keep in Touch",
+  "version": "1.0.0",
+  "description": "Cadence reminders for the people you care about. Set how often you want to reach out to someone — weekly, monthly, quarterly — log a touch when you do, and the hub emails you a gentle nudge when you're overdue.",
+  "entrypoint": "index.html",
+  "runtime": "static",
+  "category": "general",
+  "tags": [
+    "contacts",
+    "relationships",
+    "reminders",
+    "crm",
+    "stay-in-touch"
+  ],
+  "icon": "🤝",
+  "data_access": {
+    "reads": [
+      "family.members",
+      "app.contacts.contact_emails"
+    ],
+    "writes": []
+  },
+  "permissions": {
+    "default_audience": "adults",
+    "requires_approval": false
+  },
+  "storage": "db",
+  "db_plaintext_columns": ["active", "interval_hours", "last_contact_at"],
+  "row_policies": {
+    "connections": {
+      "kind": "owner_only",
+      "member_column": "member_id",
+      "adults_bypass": false
+    },
+    "touches": {
+      "kind": "owner_only",
+      "member_column": "member_id",
+      "adults_bypass": false
+    }
+  },
+  "nav": { "label": "Keep in Touch" },
+  "resource_limits": {
+    "max_db_bytes": 52428800
+  },
+  "required_capabilities": ["cron", "email"],
+  "inactivity_alerts": {
+    "table": "connections",
+    "member_column": "member_id",
+    "id_column": "id",
+    "active_column": "active",
+    "interval_hours_column": "interval_hours",
+    "last_checkin_column": "last_contact_at",
+    "last_alerted_column": "last_alerted_at",
+    "message_column": "message",
+    "recipients_column": "recipient_member_ids",
+    "external_recipients_column": "recipient_emails"
+  },
+  "external_contacts": {},
+  "ai_access": {
+    "allowed": true,
+    "mode": "read",
+    "db_exports": ["overdue_connections"]
+  }
+}

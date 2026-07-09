@@ -1,0 +1,16 @@
+{
+  "name": "chickadeebandit-stay-in-touch",
+  "version": "1.0.0",
+  "description": "Keep in Touch — cadence reminders that nudge you to reach out to the people you care about",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node dev.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
+}
