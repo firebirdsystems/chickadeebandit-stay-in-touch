@@ -27,7 +27,7 @@
     "requires_approval": false
   },
   "storage": "db",
-  "db_plaintext_columns": ["active", "interval_hours", "last_contact_at"],
+  "db_plaintext_columns": ["active", "interval_hours", "last_contact_at", "last_alerted_at"],
   "row_policies": {
     "connections": {
       "kind": "owner_only",
