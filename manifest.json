@@ -41,6 +41,19 @@
       "retain_days": { "default": 365, "timestamp_column": "touched_at", "override_key": "touch_history" }
     }
   },
+  "member_references": {
+    "connections": [
+      {
+        "column": "member_id",
+        "on_removed": "delete",
+        "dependent_tables": [
+          { "table": "touches", "foreign_key": "connection_id" }
+        ]
+      },
+      { "column": "recipient_member_ids", "on_removed": "prune_list" }
+    ],
+    "touches": { "column": "member_id", "on_removed": "delete" }
+  },
   "nav": { "label": "Keep in Touch" },
   "resource_limits": {
     "max_db_bytes": 52428800
