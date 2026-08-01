@@ -55,6 +55,21 @@
     "touches": { "column": "member_id", "on_removed": "delete" }
   },
   "nav": { "label": "Keep in Touch" },
+  "agenda": {
+    "kind": "reminder",
+    "label": "Reach out",
+    "source": {
+      "kind": "sql",
+      "query": "SELECT id AS id, name AS title, NULLIF(relationship, '') AS subtitle, member_id AS member_id, :today AS when_at FROM app_stay_in_touch__connections WHERE active = 1 AND (last_contact_at IS NULL OR last_contact_at = '' OR date(last_contact_at, '+' || interval_hours || ' hours') <= :today) ORDER BY created_at LIMIT 10"
+    }
+  },
+  "glance": {
+    "source": {
+      "kind": "sql",
+      "query": "SELECT COUNT(*) AS n FROM app_stay_in_touch__connections WHERE active = 1 AND (last_contact_at IS NULL OR last_contact_at = '' OR date(last_contact_at, '+' || interval_hours || ' hours') <= :today) LIMIT 1"
+    },
+    "display": { "template": "badge", "count": "n", "label": "people to reach out to", "severity": "info" }
+  },
   "resource_limits": {
     "max_db_bytes": 52428800
   },
