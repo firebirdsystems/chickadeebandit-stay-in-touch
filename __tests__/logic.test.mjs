@@ -3,7 +3,7 @@ import {
   weeksToHours, hoursToWeeks, cadenceLabel, connectionStatus, formatDuration,
   timeAgo, validateConnection, recipientsSummary, connectionTitle, connectionInitials,
   sortByUrgency, touchKindMeta, normalizeEmail, isValidEmail, MAX_EXTERNAL_RECIPIENTS,
-  CADENCE_PRESETS,
+  CADENCE_PRESETS, searchableFields,
 } from "../src/logic.js";
 
 const HOUR = 3600 * 1000;
@@ -137,5 +137,12 @@ describe("misc helpers", () => {
   it("exposes cadence presets", () => {
     expect(CADENCE_PRESETS.length).toBeGreaterThan(0);
     expect(CADENCE_PRESETS.every(p => Number.isInteger(p.weeks) && p.label)).toBe(true);
+  });
+});
+
+describe("searchableFields", () => {
+  it("matches on the relationship, which is how people group their list", () => {
+    const fields = searchableFields({ name: "Kit", relationship: "uni friends", message: "coffee soon?" });
+    expect(fields).toContain("uni friends");
   });
 });

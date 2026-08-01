@@ -117,6 +117,13 @@
     .empty { text-align: center; color: var(--muted); padding: 26px 14px; }
     .footnote { color: var(--muted); font-size: .8rem; margin-top: 18px; }
     @media (max-width: 520px) { .kind-btn { min-width: 0; } }
+    .search-row { margin-bottom: 12px; }
+    .search-input {
+      width: 100%; border: 1.5px solid var(--border-mid, var(--border, #d1d5db));
+      border-radius: 8px; padding: 9px 11px; font: inherit;
+      background: var(--surface, var(--card, #fff)); color: var(--text, inherit);
+    }
+    .search-input:focus { outline: none; border-color: var(--accent, #6366f1); }
   </style>
 </head>
 <body>
@@ -129,12 +136,12 @@
   </div>
 
   <script type="module">
-    import { esc, isAdult, memberColor, hubConfirm } from "/hub-sdk.js";
+    import { esc, isAdult, memberColor, hubConfirm, searchMatch } from "/hub-sdk.js";
     import {
       CADENCE_PRESETS, TOUCH_KINDS, touchKindMeta, weeksToHours, hoursToWeeks,
       cadenceLabel, connectionStatus, formatDuration, timeAgo, validateConnection,
       recipientsSummary, connectionTitle, connectionInitials, sortByUrgency,
-      normalizeEmail, isValidEmail, MAX_CONNECTIONS, MAX_EXTERNAL_RECIPIENTS,
+      normalizeEmail, isValidEmail, MAX_CONNECTIONS, MAX_EXTERNAL_RECIPIENTS, searchableFields,
     } from "./logic.js";
 
     const T = "app_stay_in_touch__";
@@ -149,6 +156,7 @@
     let members = [];
     let memberMap = new Map();
     let connections = [];
+let searchQ = "";       // in-app search (see logic.js searchableFields)
     let touches = [];                 // my logged touches (owner_only)
     let entitled = null;              // null until the entitlement endpoint answers
     let externalContacts = new Map(); // normalized email → { status, name }
@@ -347,6 +355,16 @@
       </div>`;
     }
 
+    // render() rewrites the whole view, so put the caret back after typing.
+    document.addEventListener("input", (e) => {
+      if (e.target.id !== "search") return;
+      searchQ = e.target.value;
+      const caret = e.target.selectionStart;
+      render();
+      const next = document.getElementById("search");
+      if (next) { next.focus(); next.setSelectionRange(caret, caret); }
+    });
+
     function render() {
       const root = document.getElementById("root");
       if (!ME) { root.innerHTML = `<div class="card empty">Sign in to use Keep in Touch.</div>`; return; }
@@ -354,7 +372,9 @@
         root.innerHTML = `<div class="card empty">Keep in Touch is available to adults in the household.</div>`;
         return;
       }
-      const ordered = sortByUrgency(connections);
+      const ordered = searchQ
+        ? sortByUrgency(connections).filter(c => searchMatch(searchQ, searchableFields(c)))
+        : sortByUrgency(connections);
       root.innerHTML = `
         ${renderBanner()}
         ${renderMessages()}
@@ -363,9 +383,10 @@
           <h2>Your people</h2>
           <button class="btn btn-sm" data-add ${connections.length >= MAX_CONNECTIONS ? "disabled" : ""}>+ Add someone</button>
         </div>
+        ${connections.length ? `<div class="search-row"><input id="search" class="search-input" type="search" placeholder="Search your people…" aria-label="Search your people" value="${esc(searchQ)}" /></div>` : ""}
         ${ordered.length
           ? ordered.map(renderConnectionCard).join("")
-          : `<div class="card empty">No connections yet. Add someone you want to stay in touch with.</div>`}
+          : `<div class="card empty">${searchQ ? `Nobody matches "${esc(searchQ)}".` : "No connections yet. Add someone you want to stay in touch with."}</div>`}
         <p class="footnote">Reminders are emailed on the hub’s schedule — they work even when nobody has the app open.
           External addresses are only emailed after confirming by email (double opt-in). Logging a touch is always free;
           the scheduled email nudge is part of Premium.</p>`;

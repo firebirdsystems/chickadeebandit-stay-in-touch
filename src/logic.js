@@ -198,3 +198,13 @@ export function sortByUrgency(connections, now = new Date()) {
     return connectionTitle(a).localeCompare(connectionTitle(b));
   });
 }
+
+/**
+ * Fields the in-app search matches against (see hub-sdk `searchMatch`).
+ * Relationship counts as well as the name — "the cousins" or "uni
+ * friends" is how a list of people you mean to call is grouped in
+ * someone's head.
+ */
+export function searchableFields(item) {
+  return [item.name, item.relationship, item.message];
+}
