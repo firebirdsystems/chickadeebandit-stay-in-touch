@@ -1,5 +1,7 @@
 # Keep in Touch
 
+A [Chickadee Bandit](https://chickadeebandit.com/app-library/stay-in-touch) app.
+
 A personal, CRM-lite reminder for the people you care about. Set a cadence for
 each person — every week, month, quarter, or year — log a touch when you reach
 out, and the hub emails you a gentle nudge when you're overdue: *"It's been 3
