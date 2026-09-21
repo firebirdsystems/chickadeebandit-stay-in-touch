@@ -58,6 +58,7 @@
   "agenda": {
     "kind": "reminder",
     "label": "Reach out",
+    "on_range": "today_only",
     "source": {
       "kind": "sql",
       "query": "SELECT id AS id, name AS title, NULLIF(relationship, '') AS subtitle, member_id AS member_id, :today AS when_at FROM app_stay_in_touch__connections WHERE active = 1 AND (last_contact_at IS NULL OR last_contact_at = '' OR date(last_contact_at, '+' || interval_hours || ' hours') <= :today) ORDER BY created_at LIMIT 10"
