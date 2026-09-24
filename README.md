@@ -25,9 +25,10 @@ Switch and Wellness Check-In), inverted: instead of alerting *other people* when
 - The hub's hourly cron finds active connections whose `last_contact_at` is older
   than `interval_hours`, emails the recipients, and stamps `last_alerted_at` per
   connection (by `id`) so a nudge fires once per overdue window.
-- This needs the **Premium** capability bundle (`cron` + `email`). Tracking and
-  logging touches is free; only the scheduled email is gated. The entitlement
-  banner is driven by `GET /api/check-in` (`{ entitled }`).
+- This uses the `cron` + `email` capabilities, which every live plan includes.
+  Tracking and logging touches always work; only the scheduled email pauses
+  while the household's plan is inactive. The banner is driven by
+  `GET /api/check-in` (`{ entitled }`).
 
 ## Who gets the nudge
 

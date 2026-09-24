@@ -281,9 +281,9 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
     function renderBanner() {
       if (entitled !== false) return "";
       return `<div class="banner buy">🔒 <strong>Email nudges aren’t active for your household yet.</strong>
-        Tracking connections and logging touches is free, but the scheduled reminder emails are part of the
-        <strong>Premium</strong> capability bundle. A household admin can upgrade from
-        <strong>Apps → Marketplace</strong>. Until then, your list still works as an in-app tracker.</div>`;
+        Scheduled reminder emails are included with every plan, but they pause while the household's
+        subscription is inactive. A household admin can renew from <strong>Settings → Billing</strong>.
+        Until then, your list still works as an in-app tracker.</div>`;
     }
 
     function renderStats() {
@@ -388,8 +388,8 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
           ? ordered.map(renderConnectionCard).join("")
           : `<div class="card empty">${searchQ ? `Nobody matches "${esc(searchQ)}".` : "No connections yet. Add someone you want to stay in touch with."}</div>`}
         <p class="footnote">Reminders are emailed on the hub’s schedule — they work even when nobody has the app open.
-          External addresses are only emailed after confirming by email (double opt-in). Logging a touch is always free;
-          the scheduled email nudge is part of Premium.</p>`;
+          External addresses are only emailed after confirming by email (double opt-in). Logging a touch always works;
+          the scheduled email nudge needs an active plan.</p>`;
     }
 
     function flash({ err = "", ok = "" } = {}) { error = err; notice = ok; render(); }
@@ -591,7 +591,7 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
       if (known?.status !== "confirmed" && XC_INVITE) {
         try {
           const res = await fetch(XC_INVITE, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: norm, name: name || undefined }) });
-          if (res.status === 402) { entitled = false; return modalError("Sending reminder emails needs the Premium bundle."); }
+          if (res.status === 402) { entitled = false; return modalError("Sending reminder emails needs an active plan."); }
           if (!res.ok) { const d = await res.json().catch(() => ({})); return modalError(d.error ?? "Couldn’t send the confirmation email."); }
           const { contact } = await res.json();
           if (contact) externalContacts.set(norm, { status: contact.status, name: contact.name || name || "" });
