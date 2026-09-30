@@ -27,6 +27,10 @@
     "requires_approval": false
   },
   "storage": "db",
+  "preload": {
+    "connections": {"sql": "SELECT * FROM app_stay_in_touch__connections ORDER BY created_at ASC"},
+    "touches": {"sql": "SELECT * FROM app_stay_in_touch__touches ORDER BY touched_at DESC LIMIT 400"}
+  },
   "db_plaintext_columns": ["active", "interval_hours", "last_contact_at", "last_alerted_at"],
   "row_policies": {
     "connections": {
