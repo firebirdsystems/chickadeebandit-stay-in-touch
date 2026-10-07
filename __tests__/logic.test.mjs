@@ -126,7 +126,7 @@ describe("misc helpers", () => {
     expect(connectionInitials("")).toBe("?");
   });
   it("looks up touch kinds", () => {
-    expect(touchKindMeta("call").emoji).toBe("📞");
+    expect(touchKindMeta("call").glyph).toBe("phone");
     expect(touchKindMeta("nope")).toBeNull();
   });
   it("normalizes and validates emails", () => {

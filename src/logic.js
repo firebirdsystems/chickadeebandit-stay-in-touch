@@ -19,11 +19,11 @@ export const CADENCE_PRESETS = [
 ];
 
 export const TOUCH_KINDS = [
-  { key: "call", emoji: "📞", label: "Called" },
-  { key: "text", emoji: "💬", label: "Texted" },
-  { key: "visit", emoji: "🏡", label: "Visited" },
-  { key: "email", emoji: "✉️", label: "Emailed" },
-  { key: "other", emoji: "👋", label: "Other" },
+  { key: "call", glyph: "phone", label: "Called" },
+  { key: "text", glyph: "messages", label: "Texted" },
+  { key: "visit", glyph: "house", label: "Visited" },
+  { key: "email", glyph: "envelope", label: "Emailed" },
+  { key: "other", glyph: "wave", label: "Other" },
 ];
 
 export function touchKindMeta(key) {

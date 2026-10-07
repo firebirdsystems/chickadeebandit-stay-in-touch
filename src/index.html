@@ -129,20 +129,22 @@
 <body>
   <div class="app">
     <div class="header">
-      <h1>🤝 Keep in Touch</h1>
+      <h1><span id="page-glyph"></span> Keep in Touch</h1>
       <p class="subtitle">Set how often you want to reach out to the people you care about. We’ll nudge you when it’s been too long.</p>
     </div>
     <div id="root"><div class="empty">Loading…</div></div>
   </div>
 
   <script type="module">
-    import { esc, isAdult, memberColor, hubConfirm, searchMatch } from "/hub-sdk.js";
+    import { esc, isAdult, memberColor, hubConfirm, searchMatch, glyph } from "/hub-sdk.js";
     import {
       CADENCE_PRESETS, TOUCH_KINDS, touchKindMeta, weeksToHours, hoursToWeeks,
       cadenceLabel, connectionStatus, formatDuration, timeAgo, validateConnection,
       recipientsSummary, connectionTitle, connectionInitials, sortByUrgency,
       normalizeEmail, isValidEmail, MAX_CONNECTIONS, MAX_EXTERNAL_RECIPIENTS, searchableFields,
     } from "./logic.js";
+
+    document.getElementById("page-glyph").innerHTML = glyph("handshake");
 
     const T = "app_stay_in_touch__";
     const DB = window.__DB_URL ?? "";
@@ -280,7 +282,7 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
 
     function renderBanner() {
       if (entitled !== false) return "";
-      return `<div class="banner buy">🔒 <strong>Email nudges aren’t active for your household yet.</strong>
+      return `<div class="banner buy">${glyph("lock")} <strong>Email nudges aren’t active for your household yet.</strong>
         Scheduled reminder emails are included with every plan, but they pause while the household's
         subscription is inactive. A household admin can renew from <strong>Settings → Billing</strong>.
         Until then, your list still works as an in-app tracker.</div>`;
@@ -335,7 +337,7 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
           <p class="conn-meta" style="margin-top:8px">${statusDetail(c, status)}</p>
           ${recent.length ? `<div class="history">${recent.map(renderHistoryItem).join("")}</div>` : ""}
           <div class="row-actions">
-            <button class="btn-touch btn-sm" data-touch="${esc(c.id)}">✓ Log a touch</button>
+            <button class="btn-touch btn-sm" data-touch="${esc(c.id)}">${glyph("tick", { accent: "currentColor" })} Log a touch</button>
             <button class="btn-ghost btn-sm" data-edit="${esc(c.id)}">Edit</button>
             ${paused
               ? `<button class="btn-ghost btn-sm" data-resume="${esc(c.id)}">Resume</button>`
@@ -349,7 +351,7 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
     function renderHistoryItem(t) {
       const m = touchKindMeta(t.kind);
       return `<div class="h-item">
-        <span class="h-emoji">${esc(m ? m.emoji : "👋")}</span>
+        <span class="h-emoji">${glyph(m ? m.glyph : "wave")}</span>
         <span>${t.note ? esc(t.note) : esc(m ? m.label : "Reached out")}</span>
         <span class="h-when">${esc(timeAgo(t.touched_at))}</span>
       </div>`;
@@ -472,7 +474,7 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
         <p class="hint">Logging a touch resets the reminder clock for this person.</p>
         <div class="kind-row" data-el="kinds">
           ${TOUCH_KINDS.map(k => `<button type="button" class="kind-btn ${k.key === touchKind ? "selected" : ""}" data-kind="${esc(k.key)}">
-            <span class="emoji">${esc(k.emoji)}</span>${esc(k.label)}</button>`).join("")}
+            <span class="emoji">${glyph(k.glyph)}</span>${esc(k.label)}</button>`).join("")}
         </div>
         <label for="tf-note">Note (optional)</label>
         <textarea id="tf-note" maxlength="500" placeholder="What did you talk about?"></textarea>
