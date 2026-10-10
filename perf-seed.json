@@ -1,0 +1,284 @@
+{
+ "seed": [
+  {
+   "sql": "INSERT INTO app_stay_in_touch__connections (id, member_id, name, relationship, active, interval_hours, message, last_contact_at, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 672, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-40 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-200 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-40 days'))",
+   "params": [
+    "sit-c1",
+    "{{me}}",
+    "Aunt Sue",
+    "Aunt",
+    "Ask about the garden and her knee."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__connections (id, member_id, name, relationship, active, interval_hours, last_contact_at, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 2160, strftime('%Y-%m-%dT%H:%M:%fZ','now','-20 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-199 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-20 days'))",
+   "params": [
+    "sit-c2",
+    "{{me}}",
+    "Marcus Bell",
+    "College roommate"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__connections (id, member_id, name, relationship, active, interval_hours, message, last_contact_at, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 168, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-2 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-198 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-2 days'))",
+   "params": [
+    "sit-c3",
+    "{{me}}",
+    "Grandpa Joe",
+    "Grandfather",
+    "He likes a call after dinner."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__connections (id, member_id, name, relationship, active, interval_hours, last_contact_at, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 1344, strftime('%Y-%m-%dT%H:%M:%fZ','now','-12 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-197 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-12 days'))",
+   "params": [
+    "sit-c4",
+    "{{me}}",
+    "Priya Nair",
+    "Former coworker"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__connections (id, member_id, name, relationship, active, interval_hours, message, last_contact_at, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 672, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-33 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-196 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-33 days'))",
+   "params": [
+    "sit-c5",
+    "{{me}}",
+    "Cousin Dana",
+    "Cousin",
+    "Her birthday is in the spring."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__connections (id, member_id, name, relationship, active, interval_hours, last_contact_at, created_at, updated_at) VALUES (?, ?, ?, ?, 0, 4320, strftime('%Y-%m-%dT%H:%M:%fZ','now','-150 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-195 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-150 days'))",
+   "params": [
+    "sit-c6",
+    "{{me}}",
+    "Mr. Alvarez",
+    "Old neighbor"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__connections (id, member_id, name, relationship, active, interval_hours, last_contact_at, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 336, strftime('%Y-%m-%dT%H:%M:%fZ','now','-5 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-194 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-5 days'))",
+   "params": [
+    "sit-c7",
+    "{{me}}",
+    "Lena Fischer",
+    "Friend from book club"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__connections (id, member_id, name, relationship, active, interval_hours, message, last_contact_at, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 1344, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-58 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-193 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-58 days'))",
+   "params": [
+    "sit-c8",
+    "{{me}}",
+    "Uncle Ray",
+    "Uncle",
+    "Ask how the boat is coming along."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-40 days'))",
+   "params": [
+    "sit-t1",
+    "{{me}}",
+    "sit-c1",
+    "call",
+    "Caught up for an hour about the reunion."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-75 days'))",
+   "params": [
+    "sit-t2",
+    "{{me}}",
+    "sit-c1",
+    "visit",
+    "Sunday lunch at her place."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, touched_at) VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-110 days'))",
+   "params": [
+    "sit-t3",
+    "{{me}}",
+    "sit-c1",
+    "text"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-20 days'))",
+   "params": [
+    "sit-t4",
+    "{{me}}",
+    "sit-c2",
+    "text",
+    "Sent the photo from the lake trip."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-95 days'))",
+   "params": [
+    "sit-t5",
+    "{{me}}",
+    "sit-c2",
+    "call",
+    "He got the new job in Denver."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-2 days'))",
+   "params": [
+    "sit-t6",
+    "{{me}}",
+    "sit-c3",
+    "call",
+    "Talked baseball for twenty minutes."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, touched_at) VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-9 days'))",
+   "params": [
+    "sit-t7",
+    "{{me}}",
+    "sit-c3",
+    "call"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-16 days'))",
+   "params": [
+    "sit-t8",
+    "{{me}}",
+    "sit-c3",
+    "visit",
+    "Helped him with the porch steps."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-23 days'))",
+   "params": [
+    "sit-t9",
+    "{{me}}",
+    "sit-c3",
+    "call",
+    "He asked about the kids' recital."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, touched_at) VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-31 days'))",
+   "params": [
+    "sit-t10",
+    "{{me}}",
+    "sit-c3",
+    "call"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-12 days'))",
+   "params": [
+    "sit-t11",
+    "{{me}}",
+    "sit-c4",
+    "email",
+    "Sent her the article on trail running."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-70 days'))",
+   "params": [
+    "sit-t12",
+    "{{me}}",
+    "sit-c4",
+    "visit",
+    "Coffee downtown."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-33 days'))",
+   "params": [
+    "sit-t13",
+    "{{me}}",
+    "sit-c5",
+    "text",
+    "Wished her luck on the move."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, touched_at) VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-64 days'))",
+   "params": [
+    "sit-t14",
+    "{{me}}",
+    "sit-c5",
+    "call"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-150 days'))",
+   "params": [
+    "sit-t15",
+    "{{me}}",
+    "sit-c6",
+    "visit",
+    "Dropped off tomatoes from the garden."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-5 days'))",
+   "params": [
+    "sit-t16",
+    "{{me}}",
+    "sit-c7",
+    "text",
+    "Traded notes on the new novel."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, touched_at) VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-19 days'))",
+   "params": [
+    "sit-t17",
+    "{{me}}",
+    "sit-c7",
+    "call"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-36 days'))",
+   "params": [
+    "sit-t18",
+    "{{me}}",
+    "sit-c7",
+    "visit",
+    "Book club at her house."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-50 days'))",
+   "params": [
+    "sit-t19",
+    "{{me}}",
+    "sit-c7",
+    "other",
+    "Mailed her the paperback."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-58 days'))",
+   "params": [
+    "sit-t20",
+    "{{me}}",
+    "sit-c8",
+    "call",
+    "He is repainting the hull."
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, touched_at) VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-120 days'))",
+   "params": [
+    "sit-t21",
+    "{{me}}",
+    "sit-c8",
+    "email"
+   ]
+  }
+ ]
+}
