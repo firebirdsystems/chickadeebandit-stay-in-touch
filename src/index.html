@@ -112,6 +112,8 @@
     .modal h2 { font-size: 1.1rem; margin-bottom: 4px; }
     .actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; align-items: center; }
     .hint { font-size: .8rem; color: var(--muted); margin-top: 4px; }
+    .load-error { margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; background: var(--hub-tint-danger, #fee2e2); color: var(--hub-tint-danger-fg, #b91c1c); font-size: 0.9rem; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+    .load-error-retry { background: none; border: 1px solid currentColor; border-radius: 8px; padding: 5px 10px; font: inherit; font-weight: 600; color: inherit; cursor: pointer; flex-shrink: 0; }
     .error { background: var(--red-soft); color: var(--red); padding: 9px 12px; border-radius: 8px; margin: 8px 0; font-size: .86rem; }
     .notice { background: var(--green-soft); color: var(--green); padding: 9px 12px; border-radius: 8px; margin: 8px 0; font-size: .86rem; }
     .empty { text-align: center; color: var(--muted); padding: 26px 14px; }
@@ -162,9 +164,11 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
     let touches = [];                 // my logged touches (owner_only)
     let entitled = null;              // null until the entitlement endpoint answers
     let externalContacts = new Map(); // normalized email → { status, name }
+    let contactsUnread = false;       // the registry could not be read: a contact's status is unknown, not "pending"
     let contactsBook = [];            // [{name, email}] quick-adds from the contacts app
     let error = "";
     let notice = "";
+    let loadFailed = false;           // the first load failed: the list is unknown, not empty
 
     const iAmAdult = () => isAdult(ME, members);
     const myEmail = () => normalizeEmail(ME?.email);
@@ -175,8 +179,8 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sql, params }),
       });
-      const json = await res.json();
-      if (json.error) throw new Error(json.error);
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json || typeof json !== "object" || json.error) throw new Error(json?.error || "Couldn’t reach the hub. Try again.");
       return json;
     }
 
@@ -189,10 +193,11 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
           { id: "demo-2", name: "Sam", role: "adult", email: "sam@example.com" },
         ];
       } else {
-        try {
-          const res = await fetch(`${CONTEXT}?keys=family.members`);
-          members = ((await res.json())["family.members"]) ?? [];
-        } catch { members = []; }
+        // A member list that could not be read is a failed load, not a household with nobody in it.
+        const res = await fetch(`${CONTEXT}?keys=family.members`);
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data || typeof data !== "object" || data.error || (Array.isArray(data.$errors) && data.$errors.includes("family.members"))) throw new Error("Couldn’t reach the hub. Try again.");
+        members = data["family.members"] ?? [];
       }
       memberMap = new Map(members.map(m => [m.id, m]));
     }
@@ -239,13 +244,14 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
 
     async function loadExternalContacts() {
       externalContacts = new Map();
+      contactsUnread = false;
       if (!XC_LIST) return;
       try {
         const res = await fetch(XC_LIST, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-        if (!res.ok) return;
+        if (!res.ok) { contactsUnread = true; return; }
         const { contacts } = await res.json();
         for (const c of contacts ?? []) externalContacts.set(normalizeEmail(c.email), { status: c.status, name: c.name || "" });
-      } catch { /* leave empty */ }
+      } catch { contactsUnread = true; }
     }
 
     async function loadContactsBook() {
@@ -263,7 +269,8 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
     // ── derived ───────────────────────────────────────────────────────────────
 
     function touchesFor(connectionId) { return touches.filter(t => t.connection_id === connectionId); }
-    function contactStatus(email) { return externalContacts.get(normalizeEmail(email))?.status ?? "pending"; }
+    // No badge at all when the registry is unread: "Pending" would be a guess.
+    function contactStatus(email) { return externalContacts.get(normalizeEmail(email))?.status ?? (contactsUnread ? null : "pending"); }
     function contactName(email) {
       const norm = normalizeEmail(email);
       return externalContacts.get(norm)?.name || contactsBook.find(c => c.email === norm)?.name || "";
@@ -370,6 +377,10 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
     function render() {
       const root = document.getElementById("root");
       if (!ME) { root.innerHTML = `<div class="card empty">Sign in to use Keep in Touch.</div>`; return; }
+      if (loadFailed) {
+        root.innerHTML = `<div class="load-error" data-testid="load-error" role="alert"><span>Couldn’t load your people.</span> <button type="button" class="load-error-retry" data-testid="load-retry">Try again</button></div>`;
+        return;
+      }
       if (!iAmAdult()) {
         root.innerHTML = `<div class="card empty">Keep in Touch is available to adults in the household.</div>`;
         return;
@@ -562,7 +573,7 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
         const who = name ? `${esc(name)} · ${esc(email)}` : esc(email);
         return `<span class="ext-chip" data-email="${esc(email)}">
           <span class="who">${who}</span>
-          <span class="badge ${esc(status)}">${esc(BADGE[status] ?? "Pending")}</span>
+          ${status ? `<span class="badge ${esc(status)}">${esc(BADGE[status] ?? "Pending")}</span>` : ""}
           <button type="button" class="x" data-action="remove-external" title="Remove">×</button>
         </span>`;
       }).join("") : `<span class="hint">No reminder emails yet — add one above.</span>`;
@@ -653,6 +664,7 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
     document.getElementById("root").addEventListener("click", e => {
       const btn = e.target.closest("button");
       if (!btn) return;
+      if (btn.matches('[data-testid="load-retry"]')) return void firstLoad();
       if (btn.hasAttribute("data-add")) return void openConfig(null);
       if (btn.hasAttribute("data-touch")) return void openTouchModal(btn.getAttribute("data-touch"));
       if (btn.hasAttribute("data-edit")) return void openConfig(connections.find(c => c.id === btn.getAttribute("data-edit")));
@@ -701,12 +713,18 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
 
     // ── init ────────────────────────────────────────────────────────────────────
 
-    (async function init() {
-      await Promise.all([loadMembers(), loadConnections(), loadTouches(), loadEntitlement(), loadExternalContacts(), loadContactsBook()]);
+    async function firstLoad() {
+      // A failed load says so, with a way to try again, rather than an empty list.
+      try {
+        await Promise.all([loadMembers(), loadConnections(), loadTouches(), loadEntitlement(), loadExternalContacts(), loadContactsBook()]);
+        loadFailed = false;
+      } catch { loadFailed = true; }
       if (!ME && !CONTEXT) ME = members[0] ?? null; // demo mode: act as the first member
       render();
+    }
+    firstLoad().then(() => {
       setInterval(() => { if (!modalEl) render(); }, 60_000); // keep countdowns fresh
-    })();
+    });
   </script>
 </body>
 </html>
