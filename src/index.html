@@ -430,7 +430,8 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
         await db(`INSERT INTO ${T}touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, ?)`,
           [touch.id, touch.member_id, touch.connection_id, touch.kind, touch.note, touch.touched_at]);
       } catch (e) {
-        flash({ err: `Couldn't save the touch: ${e.message}` });
+        console.error(e);
+        flash({ err: "Couldn’t save the touch — try again." });
         await loadConnections(); await loadTouches(); render();
       }
     }
@@ -445,7 +446,7 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
         else await db(`UPDATE ${T}connections SET active = 0, updated_at = ? WHERE id = ?`, [now, id]);
         await loadConnections();
         flash({ ok: active ? "Reminders resumed." : "Reminders paused." });
-      } catch (e) { flash({ err: e.message }); }
+      } catch (e) { console.error(e); flash({ err: active ? "Couldn’t resume the reminders — try again." : "Couldn’t pause the reminders — try again." }); }
     }
 
     async function deleteConnection(id) {
@@ -457,7 +458,7 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
         await db(`DELETE FROM ${T}touches WHERE connection_id = ?`, [id]);
         await loadConnections(); await loadTouches();
         flash({ ok: "Connection deleted." });
-      } catch (e) { flash({ err: e.message }); }
+      } catch (e) { console.error(e); flash({ err: "Couldn’t delete the connection — try again." }); }
     }
 
     // ── modal plumbing ──────────────────────────────────────────────────────────
@@ -655,7 +656,8 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
         flash({ ok: existingId ? "Connection saved." : `Added ${cfg.name}. We’ll remind you ${cadenceLabel(weeksToHours(weeks))}.` });
       } catch (e) {
         if (btn) { btn.disabled = false; btn.textContent = existingId ? "Save" : "Add"; }
-        modalError(e.message);
+        console.error(e);
+        modalError("Couldn’t save the connection — try again.");
       }
     }
 
