@@ -438,9 +438,12 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
       flash({ ok: `Logged — nice work staying in touch with ${connectionTitle(c)}.` });
       if (!DB) return;
       try {
-        await db(`UPDATE ${T}connections SET last_contact_at = ?, last_alerted_at = NULL, updated_at = ? WHERE id = ?`, [now, now, connectionId]);
-        await db(`INSERT INTO ${T}touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, ?)`,
-          [touch.id, touch.member_id, touch.connection_id, touch.kind, touch.note, touch.touched_at]);
+        // One batch: the clock and its history row land together, and only on a connection that is still there.
+        await dbBatch([
+          { sql: `UPDATE ${T}connections SET last_contact_at = ?, last_alerted_at = NULL, updated_at = ? WHERE id = ?`, params: [now, now, connectionId], requireChanges: true },
+          { sql: `INSERT INTO ${T}touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, ?)`,
+            params: [touch.id, touch.member_id, touch.connection_id, touch.kind, touch.note, touch.touched_at] },
+        ]);
       } catch (e) {
         console.error(e);
         flash({ err: "Couldn’t save the touch — try again." });
@@ -467,13 +470,19 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
       if (!(await hubConfirm({ message: `Delete ${connectionTitle(c)}?`, description: "The reminder stops and the touch history is removed.", confirmLabel: "Delete", destructive: true }))) return;
       try {
         // One batch: a connection never goes without its touch history, or the reverse.
+        // A delete the hub narrows to nothing fails the batch rather than reading as done.
         await dbBatch([
           { sql: `DELETE FROM ${T}touches WHERE connection_id = ?`, params: [id] },
-          { sql: `DELETE FROM ${T}connections WHERE id = ?`, params: [id] },
+          { sql: `DELETE FROM ${T}connections WHERE id = ?`, params: [id], requireChanges: true },
         ]);
         await loadConnections(); await loadTouches();
         flash({ ok: "Connection deleted." });
-      } catch (e) { console.error(e); flash({ err: "Couldn’t delete the connection — try again." }); }
+      } catch (e) {
+        console.error(e);
+        // Re-read so the list shows what is stored.
+        try { await loadConnections(); await loadTouches(); } catch (e2) { console.error(e2); }
+        flash({ err: "Couldn’t delete the connection — try again." });
+      }
     }
 
     // ── modal plumbing ──────────────────────────────────────────────────────────

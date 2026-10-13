@@ -136,6 +136,99 @@
           "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "id": "c-theirs" }] }
         }
       ]
+    },
+    {
+      "name": "deleting a connection removes it and its touch history in one batch, and only for its owner",
+      "members": { "owner": "adult", "other": "adult" },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_stay_in_touch__connections (id, member_id, name, active, interval_hours, created_at, updated_at) VALUES ('c1', ?, 'Grandpa', 1, 168, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
+          "params": ["{{owner}}"]
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES ('t1', ?, 'c1', 'call', '', '2026-01-01T00:00:00Z')",
+          "params": ["{{owner}}"]
+        },
+        {
+          "action": "batch",
+          "as": "other",
+          "statements": [
+            { "sql": "DELETE FROM app_stay_in_touch__touches WHERE connection_id = ?", "params": ["c1"] },
+            { "sql": "DELETE FROM app_stay_in_touch__connections WHERE id = ?", "params": ["c1"], "requireChanges": true }
+          ],
+          "expect": { "status": 409, "errorIncludes": "Stale state claim" }
+        },
+        {
+          "action": "db",
+          "as": "owner",
+          "sql": "SELECT id FROM app_stay_in_touch__touches",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "id": "t1" }] }
+        },
+        {
+          "action": "batch",
+          "as": "owner",
+          "statements": [
+            { "sql": "DELETE FROM app_stay_in_touch__touches WHERE connection_id = ?", "params": ["c1"] },
+            { "sql": "DELETE FROM app_stay_in_touch__connections WHERE id = ?", "params": ["c1"], "requireChanges": true }
+          ],
+          "expect": { "status": 200, "changed": [1, 1] }
+        },
+        {
+          "action": "db",
+          "as": "owner",
+          "sql": "SELECT id FROM app_stay_in_touch__connections",
+          "expect": { "status": 200, "rowCount": 0 }
+        },
+        {
+          "action": "db",
+          "as": "owner",
+          "sql": "SELECT id FROM app_stay_in_touch__touches",
+          "expect": { "status": 200, "rowCount": 0 }
+        }
+      ]
+    },
+    {
+      "name": "logging a touch stamps the connection and adds the history row in one batch, or does neither",
+      "members": { "owner": "adult" },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_stay_in_touch__connections (id, member_id, name, active, interval_hours, created_at, updated_at) VALUES ('c1', ?, 'Grandpa', 1, 168, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
+          "params": ["{{owner}}"]
+        },
+        {
+          "action": "batch",
+          "as": "owner",
+          "statements": [
+            { "sql": "UPDATE app_stay_in_touch__connections SET last_contact_at = ?, last_alerted_at = NULL, updated_at = ? WHERE id = ?", "params": ["2026-02-01T00:00:00Z", "2026-02-01T00:00:00Z", "c1"], "requireChanges": true },
+            { "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, ?)", "params": ["t1", "{{owner}}", "c1", "call", "Caught up", "2026-02-01T00:00:00Z"] }
+          ],
+          "expect": { "status": 200, "changed": [1, 1] }
+        },
+        {
+          "action": "batch",
+          "as": "owner",
+          "statements": [
+            { "sql": "UPDATE app_stay_in_touch__connections SET last_contact_at = ?, last_alerted_at = NULL, updated_at = ? WHERE id = ?", "params": ["2026-03-01T00:00:00Z", "2026-03-01T00:00:00Z", "c-gone"], "requireChanges": true },
+            { "sql": "INSERT INTO app_stay_in_touch__touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, ?)", "params": ["t2", "{{owner}}", "c-gone", "call", "", "2026-03-01T00:00:00Z"] }
+          ],
+          "expect": { "status": 409, "errorIncludes": "Stale state claim" }
+        },
+        {
+          "action": "db",
+          "as": "owner",
+          "sql": "SELECT id, last_contact_at FROM app_stay_in_touch__connections",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "id": "c1", "last_contact_at": "2026-02-01T00:00:00Z" }] }
+        },
+        {
+          "action": "db",
+          "as": "owner",
+          "sql": "SELECT id FROM app_stay_in_touch__touches",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "id": "t1" }] }
+        }
+      ]
     }
   ]
 }
