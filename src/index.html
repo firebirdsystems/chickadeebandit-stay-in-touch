@@ -184,6 +184,18 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
       return json;
     }
 
+    // Atomic multi-statement form of /api/db: the statements land whole or not at all.
+    async function dbBatch(statements) {
+      if (!DB || !statements.length) return [];
+      const res = await fetch(DB, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ statements }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json || typeof json !== "object" || json.error) throw new Error(json?.error || "Couldn’t reach the hub. Try again.");
+      return json.results ?? [];
+    }
+
     // ── loading ─────────────────────────────────────────────────────────────
 
     async function loadMembers() {
@@ -454,8 +466,11 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
       if (!c) return;
       if (!(await hubConfirm({ message: `Delete ${connectionTitle(c)}?`, description: "The reminder stops and the touch history is removed.", confirmLabel: "Delete", destructive: true }))) return;
       try {
-        await db(`DELETE FROM ${T}connections WHERE id = ?`, [id]);
-        await db(`DELETE FROM ${T}touches WHERE connection_id = ?`, [id]);
+        // One batch: a connection never goes without its touch history, or the reverse.
+        await dbBatch([
+          { sql: `DELETE FROM ${T}touches WHERE connection_id = ?`, params: [id] },
+          { sql: `DELETE FROM ${T}connections WHERE id = ?`, params: [id] },
+        ]);
         await loadConnections(); await loadTouches();
         flash({ ok: "Connection deleted." });
       } catch (e) { console.error(e); flash({ err: "Couldn’t delete the connection — try again." }); }
