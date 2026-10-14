@@ -429,40 +429,80 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
     async function logTouch(connectionId, kind, note) {
       const c = connections.find(x => x.id === connectionId);
       if (!c) return;
-      // One id and stamp per log action: a lost answer is settled by looking
-      // this touch up by its id. A later log is a new touch (the form has closed).
+      // The form this log belongs to. It stays open, as typed, until the hub
+      // has answered: a failure is said in it, and success closes it and no other.
+      const form = modalEl;
+      if (form?.dataset.saving) return;
+      // One id per open form, sent on every try: a lost answer is settled by
+      // looking this touch up by its id, and a second press cannot log it twice.
+      const id = form ? (form.dataset.rowId ||= crypto.randomUUID()) : crypto.randomUUID();
       const now = new Date().toISOString();
-      const touch = { id: crypto.randomUUID(), member_id: ME.id, connection_id: connectionId, kind, note: note ?? "", touched_at: now };
+      const touch = { id, member_id: ME.id, connection_id: connectionId, kind, note: note ?? "", touched_at: now };
       const done = `Logged — nice work staying in touch with ${connectionTitle(c)}.`;
-      // Optimistic local update — the reminder clock is anchored to last_contact_at.
-      const idx = connections.findIndex(x => x.id === connectionId);
-      if (idx !== -1) connections[idx] = { ...connections[idx], last_contact_at: now, last_alerted_at: null };
-      touches = [touch, ...touches];
-      closeModal();
-      flash({ ok: done });
-      if (!DB) return;
+      let saidNote = "";
+      // Drawn from the saved values once the hub has confirmed them — the
+      // reminder clock is anchored to last_contact_at.
+      const drawSaved = () => {
+        const at = touch.touched_at;
+        const idx = connections.findIndex(x => x.id === connectionId);
+        if (idx !== -1) connections[idx] = { ...connections[idx], last_contact_at: at, last_alerted_at: null, updated_at: at };
+        touches = [touch, ...touches.filter(t => t.id !== touch.id)];
+        if (form) delete form.dataset.rowId;
+        if (modalEl === form) closeModal();
+        flash({ ok: done, err: saidNote });
+      };
+      if (!DB) { drawSaved(); return; }
+      const btn = form?.querySelector('[data-action="save-touch"]');
+      if (form) form.dataset.saving = "yes";
+      if (btn) { btn.disabled = true; btn.textContent = "Logging…"; }
+      if (modalEl === form) modalError(null);
       try {
-        // One batch: the clock and its history row land together, and only on a connection that is still there.
-        await dbBatch([
-          { sql: `UPDATE ${T}connections SET last_contact_at = ?, last_alerted_at = NULL, updated_at = ? WHERE id = ?`, params: [now, now, connectionId], requireChanges: true },
-          { sql: `INSERT INTO ${T}touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, ?)`,
-            params: [touch.id, touch.member_id, touch.connection_id, touch.kind, touch.note, touch.touched_at] },
-        ]);
-      } catch (e) {
-        console.error(e);
-        // Re-read so the list shows what is stored; a 409 means the connection changed nothing.
-        const reread = await loadConnections().then(() => true, e2 => { console.error(e2); return false; });
-        await loadTouches().catch(e2 => console.error(e2));
-        // The answer was lost: the touch is looked up by its id. Stored means
-        // this log landed: it is done, says so, and is not logged again.
-        if (outcomeUnknown(e)) {
-          const landed = await db(`SELECT id FROM ${T}touches WHERE id = ?`, [touch.id])
-            .then(r => !!r.rows?.length, e2 => { console.error(e2); return false; });
-          if (landed) { flash({ ok: done }); return; }
+        try {
+          // One batch: the clock and its history row land together, and only on a connection that is still there.
+          await dbBatch([
+            { sql: `UPDATE ${T}connections SET last_contact_at = ?, last_alerted_at = NULL, updated_at = ? WHERE id = ?`, params: [now, now, connectionId], requireChanges: true },
+            { sql: `INSERT INTO ${T}touches (id, member_id, connection_id, kind, note, touched_at) VALUES (?, ?, ?, ?, ?, ?)`,
+              params: [touch.id, touch.member_id, touch.connection_id, touch.kind, touch.note, touch.touched_at] },
+          ]);
+        } catch (e) {
+          console.error(e);
+          // Re-read so the list shows what is stored; a 409 means the connection changed nothing.
+          const reread = await loadConnections().then(() => true, e2 => { console.error(e2); return false; });
+          await loadTouches().catch(e2 => console.error(e2));
+          // The answer was lost: the touch is looked up by its id. Stored means
+          // an earlier try landed: it is done, says so, and is not logged again.
+          let readFailed = false;
+          if (outcomeUnknown(e)) {
+            const stored = await db(`SELECT kind, note, touched_at FROM ${T}touches WHERE id = ?`, [touch.id])
+              .then(r => r.rows?.[0] ?? null, e2 => { console.error(e2); readFailed = true; return null; });
+            if (stored) {
+              // Edited since that first try: what was stored is kept, and said so.
+              if (storedDiffers(stored, { kind: touch.kind, note: touch.note })) {
+                saidNote = "Saved as first entered — check it and update what changed.";
+              }
+              Object.assign(touch, { kind: stored.kind, note: stored.note ?? "", touched_at: stored.touched_at ?? touch.touched_at });
+              drawSaved();
+              return;
+            }
+          }
+          const found = reread && e?.status === 409 ? connections.some(x => x.id === connectionId) : undefined;
+          // A 409 says only that nothing changed; without a re-read, nothing more is known.
+          // Nor with the touch's read-back failed: the id is ours, so a UNIQUE
+          // answer may be this form's own first try — "try again".
+          const line = failureLine((e?.status === 409 && !reread) || readFailed ? null : e, { action: "save the touch", thing: "connection", found });
+          // Only into the form that sent it: once it is closed or replaced, on the page.
+          if (modalEl === form) { render(); modalError(line); } else flash({ err: line });
+          return;
         }
-        const found = reread && e?.status === 409 ? connections.some(x => x.id === connectionId) : undefined;
-        // A 409 says only that nothing changed; without a re-read, nothing more is known.
-        flash({ err: failureLine(e?.status === 409 && !reread ? null : e, { action: "save the touch", thing: "connection", found }) });
+        // Stored: drawn from what was saved, then re-read. A re-read that fails
+        // keeps the list as drawn and does not report the write as failed.
+        drawSaved();
+        await loadConnections().catch(e => console.error(e));
+        await loadTouches().catch(e => console.error(e));
+        render();
+      } finally {
+        if (form) delete form.dataset.saving;
+        if (btn) { btn.disabled = false; btn.textContent = "Log it"; }
       }
     }
 
@@ -471,8 +511,9 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
     async function setActive(id, active) {
       const words = { action: active ? "resume the reminders" : "pause the reminders", thing: "connection" };
       let res;
+      const now = new Date().toISOString();
+      const saved = active ? { active: 1, last_contact_at: now, last_alerted_at: null, updated_at: now } : { active: 0, updated_at: now };
       try {
-        const now = new Date().toISOString();
         // Resuming re-anchors the clock so a long-paused connection doesn't fire instantly.
         if (active) res = await db(`UPDATE ${T}connections SET active = 1, last_contact_at = ?, last_alerted_at = NULL, updated_at = ? WHERE id = ?`, [now, now, id]);
         else res = await db(`UPDATE ${T}connections SET active = 0, updated_at = ? WHERE id = ?`, [now, id]);
@@ -483,9 +524,13 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
         flash({ err: failureLine(null, { ...words, found: reread ? connections.some(x => x.id === id) : undefined }) });
         return;
       }
-      // The write is stored; a re-read that fails must not report it as failed.
-      await loadConnections().catch(e => console.error(e));
+      // The write is stored: drawn from what was saved at once, then re-read.
+      // A re-read that fails keeps the list as drawn and does not report the
+      // write as failed.
+      const idx = connections.findIndex(x => x.id === id);
+      if (idx !== -1) connections[idx] = { ...connections[idx], ...saved };
       flash({ ok: active ? "Reminders resumed." : "Reminders paused." });
+      await loadConnections().then(render, e => console.error(e));
     }
 
     async function deleteConnection(id) {
@@ -512,9 +557,14 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
         flash({ err: failureLine(e?.status === 409 && !reread ? null : e, { action: "delete the connection", thing: "connection", found }) });
         return;
       }
-      // The delete is stored; a re-read that fails must not report it as failed.
-      try { await loadConnections(); await loadTouches(); } catch (e2) { console.error(e2); }
+      // The delete is stored: gone from the list at once, then re-read. A
+      // re-read that fails keeps the list as drawn and does not report the
+      // delete as failed.
+      connections = connections.filter(x => x.id !== id);
+      touches = touches.filter(t => t.connection_id !== id);
       flash({ ok: "Connection deleted." });
+      try { await loadConnections(); await loadTouches(); } catch (e2) { console.error(e2); }
+      render();
     }
 
     // ── modal plumbing ──────────────────────────────────────────────────────────
@@ -546,6 +596,7 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
         </div>
         <label for="tf-note">Note (optional)</label>
         <textarea id="tf-note" maxlength="500" placeholder="What did you talk about?"></textarea>
+        <div class="error" data-el="error" hidden></div>
         <div class="actions">
           <button class="btn" data-action="save-touch" data-id="${esc(connectionId)}">Log it</button>
           <span class="spacer"></span>
@@ -704,6 +755,10 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
       if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
       const now = new Date().toISOString();
       let note = "";
+      // The connection as stored, drawn at once when the hub has confirmed it.
+      const fields = { name: cfg.name, relationship: cfg.relationship, interval_hours: weeksToHours(weeks),
+        message: cfg.message, recipient_member_ids: memberIds, recipient_emails: emails, updated_at: now };
+      let row = null;
       try {
         if (existingId) {
           const res = await db(`UPDATE ${T}connections SET name = ?, relationship = ?, interval_hours = ?, message = ?, recipient_member_ids = ?, recipient_emails = ?, updated_at = ? WHERE id = ?`,
@@ -730,28 +785,42 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
             // earlier try landed; not found, or the read failed, fails as before
             // with the id still pinned.
             if (!outcomeUnknown(e)) throw e;
+            // The id is ours: with the read-back failed, a UNIQUE answer may be this
+            // form's own first try, so nothing is known — "try again", not "already exists".
             const stored = await db(`SELECT * FROM ${T}connections WHERE id = ?`, [id])
-              .then(r => r.rows?.[0] ?? null, e2 => { console.error(e2); return null; });
+              .then(r => r.rows?.[0] ?? null, e2 => { console.error(e2); throw new Error("create outcome unknown", { cause: e }); });
             if (!stored) throw e;
             console.error(e);
+            row = stored;
             // Edited since that first try: what was stored is kept, and said so.
             if (storedDiffers(stored, { name: cfg.name, relationship: cfg.relationship, interval_hours: weeksToHours(weeks),
               message: cfg.message, recipient_member_ids: memberIds, recipient_emails: emails })) {
               note = "Saved as first entered — check it and update what changed.";
             }
           }
+          row ??= { id, member_id: ME.id, active: 1, last_contact_at: now, last_alerted_at: null, created_at: now, ...fields };
           delete form.dataset.rowId;
         }
       } catch (e) {
         if (btn) { btn.disabled = false; btn.textContent = existingId ? "Save" : "Add"; }
         console.error(e);
-        modalError(failureLine(e, { action: "save the connection", thing: "connection", found: e?.found }));
+        // Only into the form that sent it: once it is closed or replaced, on the page.
+        const line = failureLine(e, { action: "save the connection", thing: "connection", found: e?.found });
+        if (modalEl === form) modalError(line); else flash({ err: line });
         return;
       }
-      // The write is stored; a re-read that fails must not report it as failed (a retry would add the person twice).
-      await loadConnections().catch(e => console.error(e));
-      closeModal();
+      // The write is stored: drawn from what was saved at once, then re-read.
+      // A re-read that fails keeps the list as drawn and must not report the
+      // write as failed (a retry would add the person twice).
+      if (existingId) {
+        const idx = connections.findIndex(x => x.id === existingId);
+        if (idx !== -1) connections[idx] = { ...connections[idx], ...fields };
+      } else {
+        connections = [...connections.filter(x => x.id !== row.id), row];
+      }
+      if (modalEl === form) closeModal();
       flash({ ok: existingId ? "Connection saved." : `Added ${cfg.name}. We’ll remind you ${cadenceLabel(weeksToHours(weeks))}.`, err: note });
+      await loadConnections().then(render, e => console.error(e));
     }
 
     // ── events ────────────────────────────────────────────────────────────────
