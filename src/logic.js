@@ -208,3 +208,45 @@ export function sortByUrgency(connections, now = new Date()) {
 export function searchableFields(item) {
   return [item.name, item.relationship, item.message];
 }
+
+/**
+ * The line a failed write shows ("Refused, gone, or failed" in the app-template guide):
+ * "try again" only when retrying can work. `thing` and `action` are the app's own nouns
+ * ("connection", "save the connection"). `found` is the caller's re-read after a write that
+ * changed nothing (or a 404/409): false = the row is gone, true = it is still there. Every
+ * write here is a plain `WHERE id = ?` on an owner_only table, so a row still there was
+ * narrowed away from this member: the permission line. A `forUser` error keeps the message
+ * the app wrote for it. Never shows hub text.
+ */
+export function failureLine(e, { action, thing, found } = {}) {
+  if (e?.forUser) return e.message;
+  if (e?.code === "UNIQUE_CONSTRAINT" || /UNIQUE constraint failed/i.test(String(e?.message ?? ""))) return `That ${thing} already exists.`;
+  if (e?.status === 403) return `You don’t have permission to ${action}.`;
+  if (e?.status === 507) return "The household’s storage is full — free up space first.";
+  if (found === false || (found === undefined && e?.status === 404)) return `This ${thing} has been removed.`;
+  if (found === true) return `You don’t have permission to ${action}.`;
+  if (e?.status === 409 || e?.status === 404) return `This ${thing} was changed by someone else — check it first.`;
+  return `Couldn’t ${action} — try again.`;
+}
+
+/**
+ * Whether a failed write may nonetheless have been stored ("retry after a lost
+ * response"). No status: the request threw before any answer. A 400: the hub's
+ * answer for a write that timed out after it may have been stored, and for a
+ * second press that met the first one's row. A 5xx other than 507: the hub
+ * failing on its side, possibly after the write. Anything else is a refusal
+ * that stored nothing.
+ */
+export function outcomeUnknown(e) {
+  const status = Number(e?.status) || 0;
+  return status === 0 || status === 400 || (status >= 500 && status !== 507);
+}
+
+/**
+ * Whether a stored row differs from what the form holds now, over the form's
+ * own columns only. Compared as text, with a missing value as empty: a stored
+ * `7` and a typed `"7"` are the same, as are `null` and `""`.
+ */
+export function storedDiffers(row, fields) {
+  return Object.keys(fields).some((k) => String(row?.[k] ?? "") !== String(fields[k] ?? ""));
+}

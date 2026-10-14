@@ -4,6 +4,7 @@ import {
   timeAgo, validateConnection, recipientsSummary, connectionTitle, connectionInitials,
   sortByUrgency, touchKindMeta, normalizeEmail, isValidEmail, MAX_EXTERNAL_RECIPIENTS,
   CADENCE_PRESETS, searchableFields,
+  outcomeUnknown, storedDiffers,
 } from "../src/logic.js";
 
 const HOUR = 3600 * 1000;
@@ -144,5 +145,26 @@ describe("searchableFields", () => {
   it("matches on the relationship, which is how people group their list", () => {
     const fields = searchableFields({ name: "Kit", relationship: "uni friends", message: "coffee soon?" });
     expect(fields).toContain("uni friends");
+  });
+});
+
+describe("outcomeUnknown", () => {
+  it("no status, a 400, or a 5xx other than 507: may have been stored", () => {
+    for (const e of [new Error("Failed to fetch"), { status: 400 }, { status: 500 }, { status: 503 }, undefined]) {
+      expect(outcomeUnknown(e)).toBe(true);
+    }
+  });
+  it("a refusal stored nothing", () => {
+    for (const status of [403, 404, 409, 507]) expect(outcomeUnknown({ status })).toBe(false);
+  });
+});
+
+describe("storedDiffers", () => {
+  const fields = { name: "Gran", interval_hours: 336, recipient_emails: "[]", message: "" };
+  it("same as stored, compared as text, null as empty", () => {
+    expect(storedDiffers({ name: "Gran", interval_hours: "336", recipient_emails: "[]", message: null, extra: "x" }, fields)).toBe(false);
+  });
+  it("a form edited since the first try", () => {
+    expect(storedDiffers({ name: "Gran", interval_hours: 168, recipient_emails: "[]", message: "" }, fields)).toBe(true);
   });
 });

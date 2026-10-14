@@ -143,7 +143,8 @@
       CADENCE_PRESETS, TOUCH_KINDS, touchKindMeta, weeksToHours, hoursToWeeks,
       cadenceLabel, connectionStatus, formatDuration, timeAgo, validateConnection,
       recipientsSummary, connectionTitle, connectionInitials, sortByUrgency,
-      normalizeEmail, isValidEmail, MAX_CONNECTIONS, MAX_EXTERNAL_RECIPIENTS, searchableFields,
+      normalizeEmail, isValidEmail, MAX_CONNECTIONS, MAX_EXTERNAL_RECIPIENTS, searchableFields, failureLine,
+      outcomeUnknown, storedDiffers,
     } from "./logic.js";
 
     document.getElementById("page-glyph").innerHTML = glyph("handshake");
@@ -180,7 +181,7 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
         body: JSON.stringify({ sql, params }),
       });
       const json = await res.json().catch(() => null);
-      if (!res.ok || !json || typeof json !== "object" || json.error) throw new Error(json?.error || "Couldn’t reach the hub. Try again.");
+      if (!res.ok || !json || typeof json !== "object" || json.error) throw Object.assign(new Error(json?.error || "Couldn’t reach the hub. Try again."), { status: res.ok ? undefined : res.status, code: json?.code });
       return json;
     }
 
@@ -192,7 +193,7 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
         body: JSON.stringify({ statements }),
       });
       const json = await res.json().catch(() => null);
-      if (!res.ok || !json || typeof json !== "object" || json.error) throw new Error(json?.error || "Couldn’t reach the hub. Try again.");
+      if (!res.ok || !json || typeof json !== "object" || json.error) throw Object.assign(new Error(json?.error || "Couldn’t reach the hub. Try again."), { status: res.ok ? undefined : res.status, code: json?.code });
       return json.results ?? [];
     }
 
@@ -428,14 +429,17 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
     async function logTouch(connectionId, kind, note) {
       const c = connections.find(x => x.id === connectionId);
       if (!c) return;
+      // One id and stamp per log action: a lost answer is settled by looking
+      // this touch up by its id. A later log is a new touch (the form has closed).
       const now = new Date().toISOString();
       const touch = { id: crypto.randomUUID(), member_id: ME.id, connection_id: connectionId, kind, note: note ?? "", touched_at: now };
+      const done = `Logged — nice work staying in touch with ${connectionTitle(c)}.`;
       // Optimistic local update — the reminder clock is anchored to last_contact_at.
       const idx = connections.findIndex(x => x.id === connectionId);
       if (idx !== -1) connections[idx] = { ...connections[idx], last_contact_at: now, last_alerted_at: null };
       touches = [touch, ...touches];
       closeModal();
-      flash({ ok: `Logged — nice work staying in touch with ${connectionTitle(c)}.` });
+      flash({ ok: done });
       if (!DB) return;
       try {
         // One batch: the clock and its history row land together, and only on a connection that is still there.
@@ -446,26 +450,37 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
         ]);
       } catch (e) {
         console.error(e);
-        flash({ err: "Couldn’t save the touch — try again." });
-        await loadConnections(); await loadTouches(); render();
+        // Re-read so the list shows what is stored; a 409 means the connection changed nothing.
+        const reread = await loadConnections().then(() => true, e2 => { console.error(e2); return false; });
+        await loadTouches().catch(e2 => console.error(e2));
+        // The answer was lost: the touch is looked up by its id. Stored means
+        // this log landed: it is done, says so, and is not logged again.
+        if (outcomeUnknown(e)) {
+          const landed = await db(`SELECT id FROM ${T}touches WHERE id = ?`, [touch.id])
+            .then(r => !!r.rows?.length, e2 => { console.error(e2); return false; });
+          if (landed) { flash({ ok: done }); return; }
+        }
+        const found = reread && e?.status === 409 ? connections.some(x => x.id === connectionId) : undefined;
+        // A 409 says only that nothing changed; without a re-read, nothing more is known.
+        flash({ err: failureLine(e?.status === 409 && !reread ? null : e, { action: "save the touch", thing: "connection", found }) });
       }
     }
 
     // ── pause / resume / delete ─────────────────────────────────────────────────
 
     async function setActive(id, active) {
-      const failed = active ? "Couldn’t resume the reminders — try again." : "Couldn’t pause the reminders — try again.";
+      const words = { action: active ? "resume the reminders" : "pause the reminders", thing: "connection" };
       let res;
       try {
         const now = new Date().toISOString();
         // Resuming re-anchors the clock so a long-paused connection doesn't fire instantly.
         if (active) res = await db(`UPDATE ${T}connections SET active = 1, last_contact_at = ?, last_alerted_at = NULL, updated_at = ? WHERE id = ?`, [now, now, id]);
         else res = await db(`UPDATE ${T}connections SET active = 0, updated_at = ? WHERE id = ?`, [now, id]);
-      } catch (e) { console.error(e); flash({ err: failed }); return; }
-      // Nothing changed (the connection is gone): re-read so the list shows what is stored.
+      } catch (e) { console.error(e); flash({ err: failureLine(e, words) }); return; }
+      // Nothing changed: re-read so the list shows what is stored, and say whether the connection is gone.
       if (res.changed === 0) {
-        await loadConnections().catch(e => console.error(e));
-        flash({ err: failed });
+        const reread = await loadConnections().then(() => true, e => { console.error(e); return false; });
+        flash({ err: failureLine(null, { ...words, found: reread ? connections.some(x => x.id === id) : undefined }) });
         return;
       }
       // The write is stored; a re-read that fails must not report it as failed.
@@ -486,9 +501,15 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
         ]);
       } catch (e) {
         console.error(e);
-        // Re-read so the list shows what is stored.
-        try { await loadConnections(); await loadTouches(); } catch (e2) { console.error(e2); }
-        flash({ err: "Couldn’t delete the connection — try again." });
+        // Re-read so the list shows what is stored; a 409 means the delete changed nothing.
+        let reread = false;
+        try { await loadConnections(); reread = true; await loadTouches(); } catch (e2) { console.error(e2); }
+        // The answer was lost and the connection is gone: this delete (or an
+        // earlier try of it) landed.
+        if (outcomeUnknown(e) && reread && !connections.some(x => x.id === id)) { flash({ ok: "Connection deleted." }); return; }
+        const found = reread && e?.status === 409 ? connections.some(x => x.id === id) : undefined;
+        // A 409 says only that nothing changed; without a re-read, nothing more is known.
+        flash({ err: failureLine(e?.status === 409 && !reread ? null : e, { action: "delete the connection", thing: "connection", found }) });
         return;
       }
       // The delete is stored; a re-read that fails must not report it as failed.
@@ -671,37 +692,59 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
       const memberIds = JSON.stringify([ME.id, ...recipientIds.filter(id => id !== ME.id)]);
       const emails = JSON.stringify(cfg.recipientEmails);
 
+      const form = modalEl;
       const btn = modalEl.querySelector('[data-action="save"]');
       if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
       const now = new Date().toISOString();
+      let note = "";
       try {
         if (existingId) {
           const res = await db(`UPDATE ${T}connections SET name = ?, relationship = ?, interval_hours = ?, message = ?, recipient_member_ids = ?, recipient_emails = ?, updated_at = ? WHERE id = ?`,
             [cfg.name, cfg.relationship, weeksToHours(weeks), cfg.message, memberIds, emails, now, existingId]);
-          // Nothing changed (the connection is gone): re-read the list and keep the form as typed.
+          // Nothing changed: re-read the list, keep the form as typed, and say whether the connection is gone.
           if (res.changed === 0) {
-            await loadConnections().catch(e => console.error(e));
+            const reread = await loadConnections().then(() => true, e => { console.error(e); return false; });
             render();
-            throw new Error("connection update changed nothing");
+            throw Object.assign(new Error("connection update changed nothing"), { found: reread ? connections.some(x => x.id === existingId) : undefined });
           }
         } else {
-          const id = crypto.randomUUID();
+          // The id is the form's, minted on its first Add and sent on every
+          // retry: a try whose answer was lost may have stored the connection,
+          // and a second press must find it rather than add the person twice.
+          const id = (form.dataset.rowId ||= crypto.randomUUID());
           // Seed last_contact_at = now so the countdown starts from "today"
           // instead of firing a nudge the moment the connection is created.
-          await db(`INSERT INTO ${T}connections (id, member_id, name, relationship, active, interval_hours, message, recipient_member_ids, recipient_emails, last_contact_at, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
-            [id, ME.id, cfg.name, cfg.relationship, weeksToHours(weeks), cfg.message, memberIds, emails, now, now, now]);
+          try {
+            await db(`INSERT INTO ${T}connections (id, member_id, name, relationship, active, interval_hours, message, recipient_member_ids, recipient_emails, last_contact_at, created_at, updated_at)
+                      VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
+              [id, ME.id, cfg.name, cfg.relationship, weeksToHours(weeks), cfg.message, memberIds, emails, now, now, now]);
+          } catch (e) {
+            // Unknown outcome: read it back by the pinned id. Found means an
+            // earlier try landed; not found, or the read failed, fails as before
+            // with the id still pinned.
+            if (!outcomeUnknown(e)) throw e;
+            const stored = await db(`SELECT * FROM ${T}connections WHERE id = ?`, [id])
+              .then(r => r.rows?.[0] ?? null, e2 => { console.error(e2); return null; });
+            if (!stored) throw e;
+            console.error(e);
+            // Edited since that first try: what was stored is kept, and said so.
+            if (storedDiffers(stored, { name: cfg.name, relationship: cfg.relationship, interval_hours: weeksToHours(weeks),
+              message: cfg.message, recipient_member_ids: memberIds, recipient_emails: emails })) {
+              note = "Saved as first entered — check it and update what changed.";
+            }
+          }
+          delete form.dataset.rowId;
         }
       } catch (e) {
         if (btn) { btn.disabled = false; btn.textContent = existingId ? "Save" : "Add"; }
         console.error(e);
-        modalError("Couldn’t save the connection — try again.");
+        modalError(failureLine(e, { action: "save the connection", thing: "connection", found: e?.found }));
         return;
       }
       // The write is stored; a re-read that fails must not report it as failed (a retry would add the person twice).
       await loadConnections().catch(e => console.error(e));
       closeModal();
-      flash({ ok: existingId ? "Connection saved." : `Added ${cfg.name}. We’ll remind you ${cadenceLabel(weeksToHours(weeks))}.` });
+      flash({ ok: existingId ? "Connection saved." : `Added ${cfg.name}. We’ll remind you ${cadenceLabel(weeksToHours(weeks))}.`, err: note });
     }
 
     // ── events ────────────────────────────────────────────────────────────────
