@@ -454,12 +454,20 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
     // ── pause / resume / delete ─────────────────────────────────────────────────
 
     async function setActive(id, active) {
+      const failed = active ? "Couldn’t resume the reminders — try again." : "Couldn’t pause the reminders — try again.";
+      let res;
       try {
         const now = new Date().toISOString();
         // Resuming re-anchors the clock so a long-paused connection doesn't fire instantly.
-        if (active) await db(`UPDATE ${T}connections SET active = 1, last_contact_at = ?, last_alerted_at = NULL, updated_at = ? WHERE id = ?`, [now, now, id]);
-        else await db(`UPDATE ${T}connections SET active = 0, updated_at = ? WHERE id = ?`, [now, id]);
-      } catch (e) { console.error(e); flash({ err: active ? "Couldn’t resume the reminders — try again." : "Couldn’t pause the reminders — try again." }); return; }
+        if (active) res = await db(`UPDATE ${T}connections SET active = 1, last_contact_at = ?, last_alerted_at = NULL, updated_at = ? WHERE id = ?`, [now, now, id]);
+        else res = await db(`UPDATE ${T}connections SET active = 0, updated_at = ? WHERE id = ?`, [now, id]);
+      } catch (e) { console.error(e); flash({ err: failed }); return; }
+      // Nothing changed (the connection is gone): re-read so the list shows what is stored.
+      if (res.changed === 0) {
+        await loadConnections().catch(e => console.error(e));
+        flash({ err: failed });
+        return;
+      }
       // The write is stored; a re-read that fails must not report it as failed.
       await loadConnections().catch(e => console.error(e));
       flash({ ok: active ? "Reminders resumed." : "Reminders paused." });
@@ -668,8 +676,14 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
       const now = new Date().toISOString();
       try {
         if (existingId) {
-          await db(`UPDATE ${T}connections SET name = ?, relationship = ?, interval_hours = ?, message = ?, recipient_member_ids = ?, recipient_emails = ?, updated_at = ? WHERE id = ?`,
+          const res = await db(`UPDATE ${T}connections SET name = ?, relationship = ?, interval_hours = ?, message = ?, recipient_member_ids = ?, recipient_emails = ?, updated_at = ? WHERE id = ?`,
             [cfg.name, cfg.relationship, weeksToHours(weeks), cfg.message, memberIds, emails, now, existingId]);
+          // Nothing changed (the connection is gone): re-read the list and keep the form as typed.
+          if (res.changed === 0) {
+            await loadConnections().catch(e => console.error(e));
+            render();
+            throw new Error("connection update changed nothing");
+          }
         } else {
           const id = crypto.randomUUID();
           // Seed last_contact_at = now so the countdown starts from "today"
