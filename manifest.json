@@ -41,9 +41,11 @@
     "touches": {
       "kind": "owner_only",
       "member_column": "member_id",
-      "adults_bypass": false,
-      "retain_days": { "default": 365, "timestamp_column": "touched_at", "override_key": "touch_history" }
+      "adults_bypass": false
     }
+  },
+  "retention": {
+    "touches": { "default": 365, "timestamp_column": "touched_at", "override_key": "touch_history" }
   },
   "member_references": {
     "connections": [
@@ -74,9 +76,6 @@
       "query": "SELECT COUNT(*) AS n FROM app_stay_in_touch__connections WHERE active = 1 AND (last_contact_at IS NULL OR last_contact_at = '' OR date(last_contact_at, '+' || interval_hours || ' hours') <= :today) LIMIT 1"
     },
     "display": { "template": "badge", "count": "n", "label": "people to reach out to", "severity": "info" }
-  },
-  "resource_limits": {
-    "max_db_bytes": 52428800
   },
   "required_capabilities": ["cron", "email"],
   "inactivity_alerts": {
