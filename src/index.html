@@ -459,9 +459,10 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
         // Resuming re-anchors the clock so a long-paused connection doesn't fire instantly.
         if (active) await db(`UPDATE ${T}connections SET active = 1, last_contact_at = ?, last_alerted_at = NULL, updated_at = ? WHERE id = ?`, [now, now, id]);
         else await db(`UPDATE ${T}connections SET active = 0, updated_at = ? WHERE id = ?`, [now, id]);
-        await loadConnections();
-        flash({ ok: active ? "Reminders resumed." : "Reminders paused." });
-      } catch (e) { console.error(e); flash({ err: active ? "Couldn’t resume the reminders — try again." : "Couldn’t pause the reminders — try again." }); }
+      } catch (e) { console.error(e); flash({ err: active ? "Couldn’t resume the reminders — try again." : "Couldn’t pause the reminders — try again." }); return; }
+      // The write is stored; a re-read that fails must not report it as failed.
+      await loadConnections().catch(e => console.error(e));
+      flash({ ok: active ? "Reminders resumed." : "Reminders paused." });
     }
 
     async function deleteConnection(id) {
@@ -475,14 +476,16 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
           { sql: `DELETE FROM ${T}touches WHERE connection_id = ?`, params: [id] },
           { sql: `DELETE FROM ${T}connections WHERE id = ?`, params: [id], requireChanges: true },
         ]);
-        await loadConnections(); await loadTouches();
-        flash({ ok: "Connection deleted." });
       } catch (e) {
         console.error(e);
         // Re-read so the list shows what is stored.
         try { await loadConnections(); await loadTouches(); } catch (e2) { console.error(e2); }
         flash({ err: "Couldn’t delete the connection — try again." });
+        return;
       }
+      // The delete is stored; a re-read that fails must not report it as failed.
+      try { await loadConnections(); await loadTouches(); } catch (e2) { console.error(e2); }
+      flash({ ok: "Connection deleted." });
     }
 
     // ── modal plumbing ──────────────────────────────────────────────────────────
@@ -675,14 +678,16 @@ let searchQ = "";       // in-app search (see logic.js searchableFields)
                     VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
             [id, ME.id, cfg.name, cfg.relationship, weeksToHours(weeks), cfg.message, memberIds, emails, now, now, now]);
         }
-        await loadConnections();
-        closeModal();
-        flash({ ok: existingId ? "Connection saved." : `Added ${cfg.name}. We’ll remind you ${cadenceLabel(weeksToHours(weeks))}.` });
       } catch (e) {
         if (btn) { btn.disabled = false; btn.textContent = existingId ? "Save" : "Add"; }
         console.error(e);
         modalError("Couldn’t save the connection — try again.");
+        return;
       }
+      // The write is stored; a re-read that fails must not report it as failed (a retry would add the person twice).
+      await loadConnections().catch(e => console.error(e));
+      closeModal();
+      flash({ ok: existingId ? "Connection saved." : `Added ${cfg.name}. We’ll remind you ${cadenceLabel(weeksToHours(weeks))}.` });
     }
 
     // ── events ────────────────────────────────────────────────────────────────
